@@ -1,144 +1,219 @@
 import { DiveSite } from '@/lib/data'
 
 export default function DiveDiagram({ site }: { site: DiveSite }) {
-  const isWreck = site.diagramType === 'wreck'
-  const isWall = site.diagramType === 'wall'
-  const isShore = site.diagramType === 'shore' || site.diagramType === 'boat'
+  const isWreck = site.type === 'Wreck'
+  const isWall = site.type === 'Wall'
+  const isDrift = site.type === 'Drift'
+  const isMuck = site.type === 'Muck'
+  const maxD = site.maxDepth
+  const avgD = site.avgDepth
+  // Scale: 0m = y:60, maxDepth = y:280 → pixels per metre
+  const ppm = 220 / maxD
+  const depthY = (d: number) => 60 + d * ppm
+  const markerDepths = maxD <= 20 ? [0,5,10,15,20] : maxD <= 30 ? [0,5,10,15,20,25,30] : [0,5,10,15,20,25,30,35]
 
   return (
-    <svg viewBox="0 0 520 300" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto', borderRadius: 8 }}>
-      {/* Background - water */}
+    <svg viewBox="0 0 560 320" xmlns="http://www.w3.org/2000/svg" style={{width:'100%',height:'auto'}}>
       <defs>
-        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.3"/>
-          <stop offset="100%" stopColor="#0c4a6e" stopOpacity="0.9"/>
+        <linearGradient id="dg-water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="#0c4a6e" stopOpacity="0.95"/>
         </linearGradient>
-        <linearGradient id="seabed" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="dg-sand" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#92400e"/>
           <stop offset="100%" stopColor="#451a03"/>
         </linearGradient>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="dg-sky" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#bae6fd"/>
           <stop offset="100%" stopColor="#7dd3fc"/>
         </linearGradient>
       </defs>
 
       {/* Sky */}
-      <rect x="0" y="0" width="520" height="55" fill="url(#sky)"/>
-      {/* Sun */}
-      <circle cx="460" cy="22" r="12" fill="#fbbf24" opacity="0.9"/>
-      {/* Waves on surface */}
-      <path d="M0 55 Q60 48 120 55 Q180 62 240 55 Q300 48 360 55 Q420 62 480 55 L520 55 L520 65 L0 65 Z" fill="#0ea5e9" opacity="0.5"/>
+      <rect x="0" y="0" width="560" height="60" fill="url(#dg-sky)"/>
+      {/* Compass N */}
+      <text x="530" y="20" fontSize="10" fill="#0a1628" fontWeight="700" textAnchor="middle">N</text>
+      <line x1="530" y1="22" x2="530" y2="32" stroke="#0a1628" strokeWidth="1.5"/>
 
-      {/* Water body */}
-      <rect x="0" y="55" width="520" height="215" fill="url(#water)"/>
+      {/* Surface label */}
+      <text x="48" y="68" fontSize="9" fill="#94a3b8" textAnchor="end">SURFACE</text>
+
+      {/* Water */}
+      <rect x="0" y="60" width="560" height="260" fill="url(#dg-water)"/>
+      {/* Surface line */}
+      <line x1="0" y1="60" x2="560" y2="60" stroke="#7dd3fc" strokeWidth="1" strokeDasharray="4,3" opacity="0.6"/>
+
+      {/* Depth markers */}
+      {markerDepths.map(d => (
+        <g key={d}>
+          <line x1="55" y1={depthY(d)} x2="560" y2={depthY(d)} stroke="#1e3a5f" strokeWidth="0.5" strokeDasharray="2,4"/>
+          <text x="50" y={depthY(d)+4} fontSize="9" fill="#60a5fa" textAnchor="end">{d}m</text>
+        </g>
+      ))}
+
+      {/* AVG DEPTH line */}
+      <line x1="55" y1={depthY(avgD)} x2="400" y2={depthY(avgD)} stroke="#f59e0b" strokeWidth="1" strokeDasharray="4,3" opacity="0.8"/>
+      <text x="410" y={depthY(avgD)+4} fontSize="9" fill="#f59e0b">AVG DEPTH: {avgD}m</text>
 
       {isWreck && (
         <>
-          {/* Wreck silhouette */}
-          <rect x="120" y="195" width="280" height="40" rx="4" fill="#1e3a5f" stroke="#334155" strokeWidth="1.5"/>
-          <rect x="160" y="175" width="100" height="25" rx="3" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
-          <rect x="280" y="180" width="60" height="20" rx="2" fill="#1e293b" stroke="#334155" strokeWidth="1"/>
-          {/* Mast */}
-          <line x1="200" y1="120" x2="200" y2="175" stroke="#475569" strokeWidth="2"/>
-          <line x1="170" y1="140" x2="230" y2="140" stroke="#475569" strokeWidth="1.5"/>
-          {/* Corals on wreck */}
-          {[140,180,240,320,360].map((x,i) => (
+          {/* Shore entry */}
+          <rect x="55" y="35" width="70" height="25" rx="4" fill="#0a1628" opacity="0.8"/>
+          <text x="90" y="46" fontSize="9" fill="#94a3b8" textAnchor="middle">SURFACE</text>
+          {/* Entry point buoy */}
+          <circle cx="120" cy="60" r="6" fill="#3b82f6" opacity="0.9"/>
+          <text x="130" y="55" fontSize="9" fill="#e2e8f0" fontWeight="700">BUOY</text>
+          <line x1="120" y1="55" x2="120" y2="60" stroke="#3b82f6" strokeWidth="1.5"/>
+          {/* Entry arrow */}
+          <text x="140" y="75" fontSize="9" fill="#22c55e" fontWeight="700">ENTRY</text>
+          <text x="140" y="86" fontSize="8" fill="#64748b">Shore</text>
+          <path d="M138 80 L130 80" stroke="#22c55e" strokeWidth="1.5" markerEnd="url(#arrow-green)"/>
+          {/* Volcanic stones */}
+          {[58,68,78,88,98,108].map(x => <ellipse key={x} cx={x} cy="62" rx="5" ry="3" fill="#374151" opacity="0.6"/>)}
+          {/* Wreck body */}
+          <rect x="130" y={depthY(5)} width="280" height={depthY(maxD)-depthY(5)-10} rx="6" fill="#1e293b" stroke="#334155" strokeWidth="1.5" opacity="0.9"/>
+          {/* Wreck details */}
+          <rect x="160" y={depthY(5)+5} width="80" height="20" rx="3" fill="#0f172a"/>
+          <rect x="260" y={depthY(5)+5} width="60" height="18" rx="3" fill="#0f172a"/>
+          <line x1="195" y1={depthY(5)-30} x2="195" y2={depthY(5)+5} stroke="#475569" strokeWidth="2"/>
+          <line x1="170" y1={depthY(5)-18} x2="220" y2={depthY(5)-18} stroke="#475569" strokeWidth="1.5"/>
+          <text x="270" y={depthY(15)} fontSize="11" fill="#94a3b8" fontWeight="700" textAnchor="middle">WRECK</text>
+          {/* BOW / STERN labels */}
+          <text x="145" y={depthY(5)-5} fontSize="9" fill="#60a5fa">BOW</text>
+          <text x="390" y={depthY(maxD)-5} fontSize="9" fill="#60a5fa">STERN</text>
+          {/* Coral growth */}
+          {[145,185,230,280,330,375,405].map((x,i) => (
             <g key={i}>
-              <path d={`M${x} 235 Q${x-8} 218 ${x} 205 Q${x+8} 218 ${x} 235`} fill="#10b981" opacity="0.7"/>
-              <path d={`M${x+12} 235 Q${x+4} 220 ${x+12} 208 Q${x+20} 220 ${x+12} 235`} fill="#059669" opacity="0.6"/>
+              <ellipse cx={x} cy={depthY(maxD)-8} rx="14" ry="8" fill="#059669" opacity="0.6"/>
+              <path d={`M${x} ${depthY(maxD)-16} Q${x-8} ${depthY(maxD)-28} ${x} ${depthY(maxD)-22} Q${x+8} ${depthY(maxD)-28} ${x} ${depthY(maxD)-16}`} fill="#10b981" opacity="0.7"/>
             </g>
           ))}
-          {/* Fish */}
-          <ellipse cx="340" cy="160" rx="12" ry="6" fill="#fbbf24" opacity="0.8"/>
-          <path d="M352 160 L360 155 L360 165 Z" fill="#fbbf24" opacity="0.8"/>
-          <ellipse cx="290" cy="145" rx="9" ry="4" fill="#f97316" opacity="0.7"/>
-          {/* Entry arrow */}
-          <line x1="80" y1="65" x2="160" y2="195" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4"/>
-          <polygon points="158,195 168,188 165,200" fill="#ef4444"/>
-          <text x="52" y="62" fontSize="10" fill="#1e293b" fontWeight="700">ENTRY</text>
-          <text x="42" y="74" fontSize="9" fill="#334155">(Shore or Boat)</text>
+          <text x="270" y={depthY(maxD)+12} fontSize="9" fill="#059669" textAnchor="middle">REEF AND CORAL GROWTH</text>
+          {/* Sand bottom */}
+          <rect x="55" y={depthY(maxD)+5} width="505" height="20" rx="3" fill="#92400e" opacity="0.5"/>
+          <text x="270" y={depthY(maxD)+17} fontSize="9" fill="#b45309" textAnchor="middle">SAND BOTTOM</text>
+          {/* Main route - red dotted */}
+          <path d={`M 125 65 Q 130 ${depthY(5)} 180 ${depthY(8)} Q 260 ${depthY(15)} 330 ${depthY(22)} Q 390 ${depthY(28)} 405 ${depthY(maxD)-15}`}
+            stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" fill="none"/>
+          {/* Return route - blue dotted */}
+          <path d={`M 405 ${depthY(maxD)-15} Q 340 ${depthY(12)} 250 ${depthY(8)} Q 180 ${depthY(5)} 125 65`}
+            stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.7"/>
+          {/* Photo points */}
+          {[[230,depthY(14)],[330,depthY(22)]].map(([x,y],i)=>(
+            <g key={i}>
+              <circle cx={x} cy={y} r="8" fill="#f59e0b" opacity="0.9"/>
+              <text x={x} y={y+4} fontSize="8" fill="#fff" textAnchor="middle" fontWeight="700">P</text>
+            </g>
+          ))}
+          {/* Max depth marker */}
+          <circle cx="405" cy={depthY(maxD)-15} r="6" fill="#ef4444"/>
+          <text x="415" y={depthY(maxD)-10} fontSize="9" fill="#ef4444" fontWeight="700">MAX</text>
           {/* Safety stop */}
-          <line x1="80" y1="80" x2="80" y2="110" stroke="#22c55e" strokeWidth="2"/>
-          <rect x="60" y="110" width="80" height="22" rx="4" fill="#15803d" opacity="0.9"/>
-          <text x="100" y="124" fontSize="9" fill="#fff" textAnchor="middle" fontWeight="600">SAFETY STOP 5m • 3 min</text>
+          <rect x="420" y={depthY(5)-12} width="120" height="22" rx="5" fill="#15803d" opacity="0.95"/>
+          <text x="480" y={depthY(5)-1} fontSize="9" fill="#fff" textAnchor="middle" fontWeight="700">SAFETY STOP 5m / 3 min</text>
+          {/* Surge arrow */}
+          <text x="80" y={depthY(avgD)+20} fontSize="8" fill="#64748b">surge</text>
+          <path d="M80 230 Q100 225 120 230" stroke="#64748b" strokeWidth="1" fill="none"/>
+          {/* Safety notes */}
+          <text x="70" y={depthY(maxD)+35} fontSize="8" fill="#ef4444">No wreck penetration unless trained</text>
+          <text x="70" y={depthY(maxD)+46} fontSize="8" fill="#ef4444">Careful shore entry/exit over volcanic stones</text>
         </>
       )}
 
       {isWall && (
         <>
           {/* Wall face */}
-          <rect x="40" y="55" width="35" height="215" fill="#1e3a5f" stroke="#334155" strokeWidth="1"/>
+          <rect x="55" y="60" width="30" height="260" fill="#1e3a5f" stroke="#334155" strokeWidth="1"/>
           {/* Corals on wall */}
-          {[80,100,130,160,195,220].map((y,i) => (
+          {[80,105,135,165,200,235,265].map((y,i)=>(
             <g key={i}>
-              <path d={`M75 ${y} Q60 ${y-15} 50 ${y-10} Q65 ${y-5} 75 ${y}`} fill={i%2===0?'#7c3aed':'#0891b2'} opacity="0.7"/>
-              <path d={`M75 ${y+10} Q62 ${y} 52 ${y+5} Q66 ${y+12} 75 ${y+10}`} fill="#10b981" opacity="0.6"/>
+              <path d={`M85 ${y} Q70 ${y-18} 60 ${y-12} Q75 ${y-5} 85 ${y}`} fill={i%2===0?'#7c3aed':'#0891b2'} opacity="0.7"/>
+              <path d={`M85 ${y+12} Q68 ${y} 58 ${y+6} Q72 ${y+14} 85 ${y+12}`} fill="#10b981" opacity="0.6"/>
             </g>
           ))}
           {/* Sea fans */}
-          <path d="M75 90 Q65 75 55 80 M75 90 Q70 72 62 78 M75 90 Q75 70 68 75" stroke="#7c3aed" strokeWidth="1.5" fill="none" opacity="0.8"/>
-          {/* Sandy bottom */}
-          <path d="M75 265 Q200 255 520 260 L520 270 L75 270 Z" fill="#92400e" opacity="0.5"/>
-          {/* Diver path */}
-          <path d="M260 70 Q240 90 220 120 Q200 150 190 190 Q185 230 200 255" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" fill="none"/>
-          <text x="265" y="75" fontSize="10" fill="#1e293b" fontWeight="700">BUOY</text>
-          <circle cx="260" cy="65" r="5" fill="#ef4444"/>
-          {/* Depth markers */}
-          {[{d:'0m',y:65},{d:'10m',y:105},{d:'20m',y:150},{d:'30m',y:195},{d:'40m',y:240}].map(m=>(
-            <g key={m.d}>
-              <line x1="78" x2="95" y1={m.y} y2={m.y} stroke="#475569" strokeWidth="0.5" strokeDasharray="2,2"/>
-              <text x="97" y={m.y+4} fontSize="9" fill="#94a3b8">{m.d}</text>
+          {[90,140,200].map((y,i)=>(
+            <g key={i}>
+              <path d={`M85 ${y} Q72 ${y-20} 62 ${y-15} M85 ${y} Q78 ${y-22} 68 ${y-16}`} stroke="#7c3aed" strokeWidth="1.5" fill="none" opacity="0.8"/>
             </g>
           ))}
-          {/* Safety stop box */}
-          <rect x="300" y="85" width="100" height="22" rx="4" fill="#15803d" opacity="0.9"/>
-          <text x="350" y="99" fontSize="9" fill="#fff" textAnchor="middle" fontWeight="600">SAFETY STOP 5m • 3 min</text>
+          {/* Sandy bottom */}
+          <path d="M85 290 Q200 280 560 285 L560 310 L85 310 Z" fill="#92400e" opacity="0.4"/>
+          {/* Entry buoy */}
+          <circle cx="200" cy="58" r="6" fill="#3b82f6"/>
+          <text x="210" y="53" fontSize="9" fill="#e2e8f0" fontWeight="700">BUOY</text>
+          {/* Diver path */}
+          <path d="M200 65 Q190 100 170 140 Q150 180 140 220 Q135 255 145 285" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" fill="none"/>
+          <text x="155" y="75" fontSize="9" fill="#22c55e" fontWeight="700">ENTRY</text>
+          {/* Return path */}
+          <path d="M145 285 Q200 240 280 200 Q350 165 420 150" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.7"/>
+          {/* Safety stop */}
+          <rect x="350" y={depthY(5)-12} width="120" height="22" rx="5" fill="#15803d" opacity="0.95"/>
+          <text x="410" y={depthY(5)-1} fontSize="9" fill="#fff" textAnchor="middle" fontWeight="700">SAFETY STOP 5m / 3 min</text>
+          {/* Current arrow */}
+          <text x="440" y="260" fontSize="8" fill="#64748b">current →</text>
+          <path d="M435 265 L465 265" stroke="#64748b" strokeWidth="1.5"/>
+          <polygon points="465,262 470,265 465,268" fill="#64748b"/>
+          <text x="270" y={depthY(maxD)+15} fontSize="9" fill="#ef4444" textAnchor="middle">Max depth: {maxD}m</text>
         </>
       )}
 
       {!isWreck && !isWall && (
         <>
           {/* Reef slope */}
-          <path d={`M0 200 Q100 190 200 210 Q300 225 400 215 Q460 210 520 220 L520 270 L0 270 Z`} fill="#92400e" opacity="0.6"/>
+          <path d={`M55 ${depthY(maxD*0.4)} Q150 ${depthY(maxD*0.5)} 300 ${depthY(maxD*0.7)} Q400 ${depthY(maxD*0.85)} 560 ${depthY(maxD*0.9)} L560 310 L55 310 Z`} fill="#92400e" opacity="0.5"/>
           {/* Coral bommies */}
-          {[60,130,200,280,360,440].map((x,i)=>(
+          {[80,130,200,280,360,440,510].map((x,i)=>{
+            const y = depthY(maxD*(0.35+i*0.08))
+            return (
+              <g key={i}>
+                <ellipse cx={x} cy={y} rx={16} ry={10} fill={i%3===0?'#0891b2':i%3===1?'#10b981':'#7c3aed'} opacity="0.7"/>
+                <path d={`M${x} ${y-10} Q${x-10} ${y-22} ${x} ${y-17} Q${x+10} ${y-22} ${x} ${y-10}`} fill="#10b981" opacity="0.8"/>
+              </g>
+            )
+          })}
+          {/* Shore/boat entry */}
+          <circle cx="100" cy="58" r="6" fill="#3b82f6"/>
+          <text x="112" y="53" fontSize="9" fill="#e2e8f0" fontWeight="700">BUOY</text>
+          <text x="112" y="73" fontSize="9" fill="#22c55e" fontWeight="700">ENTRY</text>
+          <text x="112" y="84" fontSize="8" fill="#64748b">{site.access}</text>
+          {/* Main route */}
+          <path d={`M100 65 Q110 ${depthY(5)} 140 ${depthY(maxD*0.35)} Q200 ${depthY(maxD*0.5)} 300 ${depthY(maxD*0.65)} Q380 ${depthY(maxD*0.75)} 420 ${depthY(maxD*0.85)}`}
+            stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" fill="none"/>
+          {/* Return */}
+          <path d={`M420 ${depthY(maxD*0.85)} Q320 ${depthY(maxD*0.4)} 200 ${depthY(maxD*0.25)} Q150 ${depthY(8)} 100 65`}
+            stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.7"/>
+          {/* Photo points */}
+          {[[200,depthY(maxD*0.5)],[350,depthY(maxD*0.72)]].map(([x,y],i)=>(
             <g key={i}>
-              <ellipse cx={x} cy={200} rx={18} ry={12} fill={i%3===0?'#0891b2':i%3===1?'#10b981':'#7c3aed'} opacity="0.7"/>
-              <path d={`M${x} 188 Q${x-10} 175 ${x} 170 Q${x+10} 175 ${x} 188`} fill="#10b981" opacity="0.8"/>
+              <circle cx={x} cy={y} r="8" fill="#f59e0b" opacity="0.9"/>
+              <text x={x} y={y+4} fontSize="8" fill="#fff" textAnchor="middle" fontWeight="700">P</text>
             </g>
           ))}
-          {/* Diver path */}
-          <path d="M80 70 Q90 120 100 160 Q130 185 200 195" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" fill="none"/>
-          <polygon points="200,192 208,200 194,202" fill="#ef4444"/>
-          {/* Entry */}
-          <line x1="80" y1="55" x2="80" y2="70" stroke="#334155" strokeWidth="2"/>
-          <circle cx="80" cy="58" r="6" fill="#0ea5e9" opacity="0.8"/>
-          <text x="60" y="52" fontSize="10" fill="#1e293b" fontWeight="700">ENTRY</text>
-          {/* Depth markers */}
-          {[{d:'0m',y:65},{d:'5m',y:100},{d:'10m',y:140},{d:'15m',y:180}].map(m=>(
-            <g key={m.d}>
-              <line x1="0" x2="15" y1={m.y} y2={m.y} stroke="#475569" strokeWidth="0.5"/>
-              <text x="17" y={m.y+4} fontSize="9" fill="#94a3b8">{m.d}</text>
-            </g>
-          ))}
+          {/* Max */}
+          <circle cx="420" cy={depthY(maxD*0.85)} r="6" fill="#ef4444"/>
+          <text x="430" y={depthY(maxD*0.85)+4} fontSize="9" fill="#ef4444" fontWeight="700">MAX</text>
           {/* Safety stop */}
-          <rect x="300" y="85" width="100" height="22" rx="4" fill="#15803d" opacity="0.9"/>
-          <text x="350" y="99" fontSize="9" fill="#fff" textAnchor="middle" fontWeight="600">SAFETY STOP 5m • 3 min</text>
-          {/* Fish */}
-          <ellipse cx="320" cy="170" rx="10" ry="5" fill="#fbbf24" opacity="0.8"/>
-          <ellipse cx="360" cy="155" rx="8" ry="4" fill="#f97316" opacity="0.7"/>
-          <ellipse cx="400" cy="175" rx="12" ry="5" fill="#06b6d4" opacity="0.7"/>
+          <rect x="350" y={depthY(5)-12} width="120" height="22" rx="5" fill="#15803d" opacity="0.95"/>
+          <text x="410" y={depthY(5)-1} fontSize="9" fill="#fff" textAnchor="middle" fontWeight="700">SAFETY STOP 5m / 3 min</text>
+          {/* Current */}
+          <text x="450" y="270" fontSize="8" fill="#64748b">current →</text>
+          <path d="M445 275 L475 275" stroke="#64748b" strokeWidth="1.5"/>
+          <polygon points="475,272 480,275 475,278" fill="#64748b"/>
         </>
       )}
 
-      {/* Current arrow */}
-      <text x="420" y="245" fontSize="9" fill="#94a3b8">CURRENT →</text>
-      <line x1="415" y1="248" x2="445" y2="248" stroke="#94a3b8" strokeWidth="1"/>
-      <polygon points="445,245 452,248 445,251" fill="#94a3b8"/>
-
-      {/* Depth label */}
-      <text x="480" y="270" fontSize="9" fill="#60a5fa" textAnchor="end">Max depth: {site.maxDepth}m</text>
+      {/* Legend */}
+      <g transform="translate(60,300)">
+        <line x1="0" y1="5" x2="20" y2="5" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,2"/>
+        <text x="24" y="9" fontSize="8" fill="#94a3b8">Suggested route</text>
+        <circle cx="110" cy="5" r="5" fill="#f59e0b"/>
+        <text x="118" y="9" fontSize="8" fill="#94a3b8">Photo opportunity</text>
+        <line x1="210" y1="5" x2="230" y2="5" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="3,3"/>
+        <text x="234" y="9" fontSize="8" fill="#94a3b8">Alternate route</text>
+        <circle cx="320" cy="5" r="5" fill="#ef4444"/>
+        <text x="328" y="9" fontSize="8" fill="#94a3b8">Max depth</text>
+      </g>
     </svg>
   )
 }
