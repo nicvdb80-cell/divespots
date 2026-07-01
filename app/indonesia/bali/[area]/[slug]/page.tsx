@@ -78,7 +78,7 @@ export default function DiveSitePage({ params }: { params: { area: string; slug:
           {/* Area strip */}
           <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '0.75rem 2rem', display: 'flex', gap: 8, overflowX: 'auto' }}>
             {BALI_AREAS.map(a => (
-              <Link key={a.slug} href={`/indonesia/bali/${a.slug}`}
+              <Link key={a.slug} href={`/indonesia/bali/areas/${a.slug}`}
                 style={{ padding: '6px 12px', background: site.areaSlug === a.slug ? '#0a1628' : '#fff', border: '1px solid ' + (site.areaSlug === a.slug ? '#0a1628' : '#e2e8f0'), borderRadius: 8, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', color: site.areaSlug === a.slug ? '#fff' : '#475569', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span>{a.name}</span>
                 <span style={{ fontSize: 9, color: site.areaSlug === a.slug ? '#60a5fa' : '#94a3b8', fontWeight: 400 }}>{a.count} dive sites</span>
