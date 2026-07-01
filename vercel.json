@@ -1,0 +1,6 @@
+{
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://flhsqerpikhihtirfutu.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsaHNxZXJwaWtoaWh0aXJmdXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNTg4NTEsImV4cCI6MjA5MjkzNDg1MX0.Q0RO8O_i7fBbDZTS6ZGyQ3NqrraxtRK3UG5PDITGYsU"
+  }
+}
