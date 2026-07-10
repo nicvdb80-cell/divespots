@@ -32,13 +32,13 @@ export default function BaliPage() {
           <div style={{ background:'#0a1628',border:'1px solid #1e3a5f',borderRadius:12,padding:'1.25rem',marginBottom:12 }}>
             <div style={{ fontSize:11,fontWeight:700,color:'#475569',marginBottom:12,letterSpacing:1 }}>DIVE AREAS</div>
             {BALI_AREAS.map(a=>(
-              <div key={a.slug} style={{ padding:'8px 0',borderBottom:'1px solid #1e3a5f',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <Link key={a.slug} href={`/indonesia/bali/areas/${a.slug}`} style={{ padding:'8px 0',borderBottom:'1px solid #1e3a5f',display:'flex',justifyContent:'space-between',alignItems:'center',textDecoration:'none',cursor:'pointer' }}>
                 <div>
                   <div style={{ fontSize:13,color:'#e2e8f0',fontWeight:500 }}>{a.name}</div>
                   <div style={{ fontSize:11,color:'#475569' }}>{a.desc}</div>
                 </div>
                 <span style={{ fontSize:11,color:'#475569' }}>{a.count}</span>
-              </div>
+              </Link>
             ))}
           </div>
           <div style={{ background:'#001a0a',border:'1px solid #14532d',borderRadius:12,padding:'1rem' }}>

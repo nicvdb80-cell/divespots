@@ -37,7 +37,7 @@ export default function RajaAmpatPage() {
           <div style={{ background:'#0a1628',border:'1px solid #1e3a5f',borderRadius:12,padding:'1.25rem',marginBottom:12 }}>
             <div style={{ fontSize:11,fontWeight:700,color:'#475569',marginBottom:12,letterSpacing:1 }}>DIVE AREAS</div>
             {RAJA_AMPAT_AREAS.map(a=>(
-              <Link key={a.slug} href={`/indonesia/raja-ampat/areas/${a.slug}`} style={{ display:'flex',padding:'8px 0',borderBottom:'1px solid #1e3a5f',justifyContent:'space-between',alignItems:'center',textDecoration:'none' }}>
+              <Link key={a.slug} href={`/indonesia/raja-ampat/areas/${a.slug}`} style={{ display:'flex',padding:'8px 0',borderBottom:'1px solid #1e3a5f',justifyContent:'space-between',alignItems:'center',textDecoration:'none',cursor:'pointer' }}>
                 <div>
                   <div style={{ fontSize:13,color:'#e2e8f0',fontWeight:500 }}>{a.name}</div>
                   <div style={{ fontSize:11,color:'#475569' }}>{a.desc}</div>
