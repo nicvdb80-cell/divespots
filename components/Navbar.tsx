@@ -1,14 +1,49 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthProvider'
 import AuthModal from './AuthModal'
+import { BALI_SITES, RAJA_AMPAT_SITES } from '@/lib/data'
+
+const ALL_SITES = [
+  ...BALI_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Bali' })),
+  ...RAJA_AMPAT_SITES.map(s => ({ ...s, region: 'raja-ampat', regionLabel: 'Raja Ampat' })),
+]
 
 export default function Navbar() {
   const path = usePathname()
+  const router = useRouter()
   const { user, signOut, setShowModal, showModal } = useAuth()
   const [userMenu, setUserMenu] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  const searchResults = searchQuery.trim().length > 1
+    ? ALL_SITES.filter(s =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.area.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.difficulty.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 7)
+    : []
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function handleSelect(site: typeof ALL_SITES[0]) {
+    setSearchQuery('')
+    setSearchOpen(false)
+    router.push(`/indonesia/${site.region}/${site.areaSlug}/${site.slug}`)
+  }
 
   const links = [
     ['Destinations', '/destinations'],
@@ -38,9 +73,48 @@ export default function Navbar() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div style={{ background: '#1e3a5f', borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'text' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <span style={{ fontSize: 12, color: '#475569' }}>Search dive sites…</span>
+        <div ref={searchRef} style={{ position: 'relative' }}>
+            <div style={{ background: '#1e3a5f', borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder="Search dive sites…"
+                style={{ fontSize: 12, color: '#e2e8f0', background: 'transparent', border: 'none', outline: 'none', width: 160 }}
+              />
+              {searchQuery && (
+                <button onClick={() => { setSearchQuery(''); setSearchOpen(false) }} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+              )}
+            </div>
+            {searchOpen && searchResults.length > 0 && (
+              <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, background: '#0f2340', border: '1px solid #1e3a5f', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 400, overflow: 'hidden', minWidth: 280 }}>
+                {searchResults.map(site => (
+                  <button
+                    key={site.slug + site.region}
+                    onClick={() => handleSelect(site)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #1e3a5f' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#1e3a5f')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                  >
+                    <div style={{ width: 28, height: 28, background: '#0a1628', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
+                      {site.type === 'Wreck' ? '🚢' : site.type === 'Wall' ? '🪸' : site.type === 'Drift' ? '🌊' : site.type === 'Muck' ? '🐙' : '🐠'}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{site.name}</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>{site.area} · {site.regionLabel} · {site.difficulty}</div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>★ {site.rating}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchOpen && searchQuery.trim().length > 1 && searchResults.length === 0 && (
+              <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, background: '#0f2340', border: '1px solid #1e3a5f', borderRadius: 10, padding: '12px 14px', zIndex: 400 }}>
+                <div style={{ fontSize: 12, color: '#475569' }}>No sites found for "{searchQuery}"</div>
+              </div>
+            )}
           </div>
           <Link href="/submit-dive-site" style={{ width: 28, height: 28, background: '#ef4444', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 300, flexShrink: 0 }}>+</Link>
 
