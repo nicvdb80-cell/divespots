@@ -1027,6 +1027,11 @@ function ExitVisual({ ee, routeEndX, routeEndY }: { ee: EntryExit; routeEndX: nu
   return null
 }
 
+export default function DiveBriefingCard({site}:{site:DiveSite}) {
+  const {maxDepth:md,minDepth,visibility,temp,difficulty,minCert,
+         bestTime,bestSeason,type,access,current,name,area,
+         marineLife,safetyNotes,rank}=site
+
   const template = getTemplate(site)
   const id       = site.slug.replace(/[^a-z0-9]/g,'-')
   const ee       = classifyEntryExit(site, template)
