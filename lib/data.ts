@@ -156,12 +156,12 @@ export function getTemplate(site: DiveSite): DiagramTemplate {
     return 'cleaning-station'
 
   // Drift — goodFor or specific sites
-  const driftSlugs = ['bunutan','gili-selang','kusambi','deep-blue-amed','deep-blue-amed-v1','sd-point','mangrove-point','alamanda-tulamben']
+  const driftSlugs = ['bunutan','gili-selang','kusambi','deep-blue-amed','deep-blue-amed-v1','sd-point','mangrove-point','alamanda-tulamben','batu-bulan']
   if (gf.includes('drift diving') || driftSlugs.includes(slug))
     return 'drift'
 
   // Pinnacle / seamount — only true seamounts that rise from depth
-  const pinnacleSlugs = ['cape-kri','sahaung','blue-magic','fukui-point','alung-banua','batu-kelebit','batu-bulan']
+  const pinnacleSlugs = ['cape-kri','sahaung','blue-magic','fukui-point','alung-banua','batu-kelebit']
   if (n.includes('seamount') || desc.includes('seamount') || desc.includes('rises from 400m') ||
       pinnacleSlugs.includes(slug))
     return 'pinnacle'
