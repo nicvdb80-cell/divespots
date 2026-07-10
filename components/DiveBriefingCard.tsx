@@ -1,434 +1,637 @@
 import React from 'react'
 import { DiveSite } from '@/lib/data'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// DIVE SPOTS — OFFICIAL DIVE BRIEFING SYSTEM  v3.0
-// Spec: Premium · Editorial · Consistent · Data-driven
-// Canvas: 2048 × 2048 square
-// ═══════════════════════════════════════════════════════════════════════════
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  DIVE SPOTS — OFFICIAL DIVE BRIEFING SYSTEM  v4.0
+//  Architecture: Token → Primitive → Component → Template → Renderer
+//  Think Google Maps, not an illustration.
+//  Canvas: 2048 × 2048  |  Scalable SVG  |  Data-driven only
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const W = 2048
-const H = 2048
+// ─────────────────────────────────────────────────────────────────────────
+//  1. DESIGN TOKENS
+//  Single source of truth. Change here → changes everywhere.
+// ─────────────────────────────────────────────────────────────────────────
+const T = {
+  // Canvas
+  W: 2048,
+  H: 2048,
 
-// ── Layout zones (all heights must sum to H) ──────────────────────────────
-const HDR_Y  = 0
-const HDR_H  = 156    // Header
-const DGM_Y  = 156    // Diagram start
-const DGM_H  = 1072   // Diagram (~52% — "70%" of content below header)
-const INF_Y  = 1228   // Info cards
-const INF_H  = 148
-const TML_Y  = 1376   // Timeline
-const TML_H  = 234
-const TIP_Y  = 1610   // Safety tips
-const TIP_H  = 372
-const FTR_Y  = 1982   // Footer
-const FTR_H  = 66     // → total = 2048 ✓
+  // Layout (all must sum to H=2048)
+  HEADER_H:   152,
+  DIAGRAM_H: 1100,   // ~54% of canvas — the largest zone
+  CARDS_H:    140,
+  TIMELINE_H: 240,
+  TIPS_H:     360,
+  FOOTER_H:    56,   // 152+1100+140+240+360+56 = 2048 ✓
 
-// Diagram internals
-const SKY_H  = 100    // sky band above water
-const SY     = DGM_Y + SKY_H         // surface y
-const BY     = DGM_Y + DGM_H - 40    // seabed y
-const LP     = 1492   // left edge of right legend panel
-const LW     = W - LP // = 556
+  // Diagram internals
+  SKY_H:      108,   // sky above water surface
+  PANEL_W:    520,   // right panel width
+  DEPTH_GUTTER: 62,  // left gutter for depth labels
 
-function dY(depth: number, max: number) {
-  return SY + (depth / max) * (BY - SY)
+  // Spacing system (4px base)
+  S4: 4, S8: 8, S12: 12, S16: 16, S20: 20, S24: 24,
+  S32: 32, S40: 40, S48: 48, S64: 64,
+
+  // Colour tokens
+  C: {
+    // Backgrounds — dark navy scale
+    bg:        '#03101d',
+    bgPanel:   '#051624',
+    bgCard:    '#07192c',
+    bgCardHi:  '#091e34',
+    bgDark:    '#020c17',
+    bgRed:     '#1a0508',
+    bgGreen:   '#051a0f',
+
+    // Water gradient stops
+    water0:    '#15648a',   // surface
+    water1:    '#0b3d62',   // mid-depth
+    water2:    '#040f1e',   // deep
+
+    // Sky
+    sky0:      '#6ab4d4',
+    sky1:      '#9ecfe6',
+
+    // Terrain
+    terrainFill:   '#0f2218',
+    terrainStroke: '#183424',
+    sand:          '#b89040',
+    sandFill:      '#c8a458',
+
+    // Type scale
+    textPrimary:   '#ffffff',
+    textSecondary: '#8aaab8',
+    textMuted:     '#3d5a70',
+    textDivider:   '#122030',
+
+    // Semantic — all spec-compliant
+    green:   '#16c070',
+    red:     '#e53040',
+    orange:  '#f07020',
+    yellow:  '#f0c018',
+    blue:    '#2890d0',
+    teal:    '#00a8c0',
+
+    // Route
+    route:   '#ffffff',
+  },
+
+  // Typography scale (px at 2048 canvas)
+  F: {
+    label:    12,   // CAPS labels
+    caption:  14,
+    body:     16,
+    bodyLg:   18,
+    ui:       20,
+    subhead:  24,
+    head:     32,
+    display:  52,
+    hero:     68,
+  },
+
+  // Radius
+  R: { sm:6, md:10, lg:16, pill:999 },
 }
 
-// ── DESIGN TOKENS ─────────────────────────────────────────────────────────
-const C = {
-  // Backgrounds
-  bg:         '#03101d',
-  bgPanel:    '#061523',
-  bgCard:     '#08192a',
-  bgCardAlt:  '#0a1f34',
-  bgDark:     '#020c16',
+// Derived layout positions
+const HEADER_Y   = 0
+const DIAGRAM_Y  = T.HEADER_H
+const CARDS_Y    = DIAGRAM_Y + T.DIAGRAM_H
+const TIMELINE_Y = CARDS_Y   + T.CARDS_H
+const TIPS_Y     = TIMELINE_Y + T.TIMELINE_H
+const FOOTER_Y   = TIPS_Y    + T.TIPS_H
 
-  // Ocean water gradient
-  sea0:       '#165f8a',   // surface
-  sea1:       '#0c3d5e',   // mid
-  sea2:       '#040f1e',   // deep
+// Diagram-space constants
+const SURFACE_Y  = DIAGRAM_Y + T.SKY_H
+const SEABED_Y   = DIAGRAM_Y + T.DIAGRAM_H - 48
+const PANEL_X    = T.W - T.PANEL_W
+const DRAW_W     = PANEL_X - T.DEPTH_GUTTER   // usable diagram width
 
-  // Sky
-  sky0:       '#7ec8e3',
-  sky1:       '#aedcef',
-
-  // Type
-  white:      '#ffffff',
-  offWhite:   '#e6edf3',
-  grey1:      '#8fa8ba',
-  grey2:      '#4a657a',
-  grey3:      '#1e3346',
-  divider:    '#142030',
-
-  // Semantic
-  green:      '#18c47a',
-  greenBg:    '#082e1a',
-  red:        '#e53248',
-  redBg:      '#2a0812',
-  orange:     '#f07828',
-  yellow:     '#f4c418',
-  blue:       '#2a96d6',
-  teal:       '#00afc2',
-  purple:     '#8050c8',
+// Depth-to-Y mapping — linear scale
+function dY(depth: number, maxDepth: number): number {
+  return SURFACE_Y + (depth / maxDepth) * (SEABED_Y - SURFACE_Y)
 }
 
-// ── TYPOGRAPHY helper ─────────────────────────────────────────────────────
-type TProps = {
-  x: number; y: number; size: number
-  fill?: string; weight?: string; anchor?: string
-  spacing?: string; children: React.ReactNode
-}
-function T({ x, y, size, fill = C.white, weight = '400', anchor = 'start', spacing = '0', children }: TProps) {
+// ─────────────────────────────────────────────────────────────────────────
+//  2. PRIMITIVE COMPONENTS
+//  Atomic, reusable, no business logic.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Text — consistent font stack
+function Txt({ x, y, size, fill = T.C.textPrimary, weight = '400',
+  anchor = 'start', spacing = '0', children }: {
+  x: number; y: number; size: number; fill?: string; weight?: string
+  anchor?: string; spacing?: string; children: React.ReactNode
+}) {
   return (
     <text x={x} y={y} fontSize={size} fill={fill} fontWeight={weight}
       textAnchor={anchor} letterSpacing={spacing}
-      fontFamily="'Inter','Helvetica Neue',Arial,sans-serif">
+      fontFamily="'Inter','Helvetica Neue',system-ui,Arial,sans-serif">
       {children}
     </text>
   )
 }
 
-// SVG text wrapper that splits long lines
-function TWrap({ x, y, size, fill = C.white, weight = '400', maxW, lineH, children }: {
-  x: number; y: number; size: number; fill?: string; weight?: string
-  maxW: number; lineH: number; children: string
+// Badge — pill-shaped label
+function Badge({ x, y, w, h = 44, fill, stroke, children }: {
+  x: number; y: number; w: number; h?: number
+  fill: string; stroke: string; children: React.ReactNode
 }) {
-  const words = children.split(' ')
-  const charsPerLine = Math.floor(maxW / (size * 0.52))
-  const lines: string[] = []
-  let cur = ''
-  for (const w of words) {
-    if ((cur + ' ' + w).trim().length > charsPerLine && cur) {
-      lines.push(cur.trim()); cur = w
-    } else { cur = (cur + ' ' + w).trim() }
-  }
-  if (cur) lines.push(cur)
   return (
-    <text x={x} y={y} fontSize={size} fill={fill} fontWeight={weight}
-      fontFamily="'Inter','Helvetica Neue',Arial,sans-serif">
-      {lines.map((l, i) => <tspan key={i} x={x} dy={i === 0 ? 0 : lineH}>{l}</tspan>)}
-    </text>
-  )
-}
-
-// ── FLAT VECTOR ICONS (consistent style) ─────────────────────────────────
-
-function IconBoat({ x, y }: { x: number; y: number }) {
-  return (
-    <g transform={`translate(${x},${y})`}>
-      {/* hull */}
-      <path d="M-70 0 Q-52 -10 0 -12 Q52 -10 70 0 Q46 18 -46 18 Z"
-        fill={C.offWhite} stroke={C.grey1} strokeWidth="2.5"/>
-      {/* cabin */}
-      <rect x="-22" y="-40" width="44" height="30" rx="4" fill={C.grey1} stroke={C.grey2} strokeWidth="2"/>
-      {/* mast */}
-      <line x1="2" y1="-40" x2="2" y2="-72" stroke={C.grey2} strokeWidth="3"/>
-      <line x1="-28" y1="-58" x2="32" y2="-58" stroke={C.grey2} strokeWidth="2"/>
-      {/* flag */}
-      <rect x="-36" y="-74" width="70" height="12" rx="3" fill={C.orange}/>
-      {/* dive flag */}
-      <rect x="32" y="-72" width="20" height="14" rx="2" fill={C.red}/>
-      <line x1="40" y1="-65" x2="52" y2="-72" stroke={C.white} strokeWidth="1.5"/>
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={fill} stroke={stroke} strokeWidth="1.5"/>
+      {children}
     </g>
   )
 }
 
-function IconCompass({ x, y }: { x: number; y: number }) {
+// Card — rounded rectangle panel
+function Card({ x, y, w, h, fill = T.C.bgCard, stroke = T.C.textDivider, r = T.R.md, children }: {
+  x: number; y: number; w: number; h: number
+  fill?: string; stroke?: string; r?: number; children?: React.ReactNode
+}) {
   return (
-    <g transform={`translate(${x},${y})`}>
-      <circle cx="0" cy="0" r="52" fill={C.bgCard} stroke={C.grey2} strokeWidth="2.5"/>
-      <circle cx="0" cy="0" r="44" fill="none" stroke={C.grey3} strokeWidth="1"/>
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={r} fill={fill} stroke={stroke} strokeWidth="1.2"/>
+      {children}
+    </g>
+  )
+}
+
+// Divider line
+function Div({ x1, y1, x2, y2, color = T.C.textDivider }: {
+  x1:number; y1:number; x2:number; y2:number; color?: string
+}) {
+  return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth="1.2"/>
+}
+
+// Section label — always the same treatment
+function SectionLabel({ x, y, children }: { x:number; y:number; children:string }) {
+  return (
+    <Txt x={x} y={y} size={T.F.label} fill={T.C.textSecondary} weight="700" spacing="2.5">
+      {children}
+    </Txt>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  3. SYSTEM COMPONENTS
+//  Built from primitives. Each has one job.
+// ─────────────────────────────────────────────────────────────────────────
+
+// COMPASS — always top-right of header
+function Compass({ cx, cy, r = 48 }: { cx:number; cy:number; r?:number }) {
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={r} fill={T.C.bgCard} stroke={T.C.textMuted} strokeWidth="2"/>
+      <circle cx={cx} cy={cy} r={r - 10} fill="none" stroke={T.C.textDivider} strokeWidth="1"/>
       {/* tick marks */}
-      {Array.from({length:12}).map((_,i) => {
+      {Array.from({length: 12}).map((_,i) => {
         const a = (i * 30 - 90) * Math.PI / 180
-        const r1 = i%3===0 ? 36 : 40; const r2 = 44
-        return <line key={i} x1={Math.cos(a)*r1} y1={Math.sin(a)*r1}
-          x2={Math.cos(a)*r2} y2={Math.sin(a)*r2} stroke={C.grey2} strokeWidth={i%3===0?2:1}/>
+        const major = i % 3 === 0
+        const r1 = major ? r - 18 : r - 13
+        return (
+          <line key={i}
+            x1={cx + Math.cos(a) * r1} y1={cy + Math.sin(a) * r1}
+            x2={cx + Math.cos(a) * (r - 6)} y2={cy + Math.sin(a) * (r - 6)}
+            stroke={T.C.textMuted} strokeWidth={major ? 2 : 1}/>
+        )
       })}
-      {/* N E S W */}
-      {(['N','E','S','W'] as const).map((d,i) => {
-        const angles = [-90, 0, 90, 180]
-        const a = angles[i] * Math.PI / 180
-        return <text key={d} x={Math.cos(a)*28} y={Math.sin(a)*28+5}
-          fontSize="14" fill={d==='N'?C.orange:C.grey1}
-          textAnchor="middle" fontWeight={d==='N'?'800':'600'}
-          fontFamily="'Inter',Arial,sans-serif">{d}</text>
+      {/* cardinal labels */}
+      {[['N',-90,T.C.orange],['E',0,T.C.textSecondary],['S',90,T.C.textSecondary],['W',180,T.C.textSecondary]].map(([d,a,c]) => {
+        const ang = (Number(a) - 90) * Math.PI / 180
+        return (
+          <Txt key={String(d)} x={cx + Math.cos(ang)*(r-26)} y={cy + Math.sin(ang)*(r-26)+5}
+            size={13} fill={String(c)} weight={d==='N'?'800':'500'} anchor="middle">
+            {String(d)}
+          </Txt>
+        )
       })}
       {/* needle */}
-      <polygon points="0,-30 6,8 0,2 -6,8" fill={C.white}/>
-      <polygon points="0,30 6,-8 0,-2 -6,-8" fill={C.grey2}/>
-      <circle cx="0" cy="0" r="4" fill={C.bgCard} stroke={C.white} strokeWidth="1.5"/>
+      <polygon points={`${cx},${cy - r + 16} ${cx + 6},${cy + 4} ${cx},${cy} ${cx - 6},${cy + 4}`}
+        fill={T.C.textPrimary}/>
+      <polygon points={`${cx},${cy + r - 16} ${cx + 6},${cy - 4} ${cx},${cy} ${cx - 6},${cy - 4}`}
+        fill={T.C.textMuted}/>
+      <circle cx={cx} cy={cy} r="4" fill={T.C.bgCard} stroke={T.C.textPrimary} strokeWidth="1.5"/>
     </g>
   )
 }
 
-function CurrentArrows({ x, y, strength }: { x: number; y: number; strength: 'weak'|'moderate'|'strong' }) {
-  const counts = { weak:2, moderate:3, strong:5 }
-  const cols   = { weak:'#4a9ab8', moderate:C.teal, strong:C.blue }
-  const labels = { weak:'MILD CURRENT', moderate:'CURRENT', strong:'STRONG CURRENT' }
-  const n = counts[strength]; const col = cols[strength]
+// BOAT icon — flat vector, minimal
+function BoatIcon({ x, y, label }: { x:number; y:number; label:string }) {
   return (
     <g>
-      {Array.from({length:n}).map((_,i) => (
-        <path key={i} d={`M${x+i*46} ${y-12} L${x+i*46+24} ${y} L${x+i*46} ${y+12} L${x+i*46+8} ${y} Z`}
-          fill={col} opacity={0.6+i*0.06}/>
-      ))}
-      <text x={x+n*46+16} y={y+6} fontSize="22" fill={col} fontWeight="700"
-        fontFamily="'Inter',Arial,sans-serif" letterSpacing="1.5">{labels[strength]}</text>
-    </g>
-  )
-}
-
-// Waypoint: numbered circle. Last one = green safety stop.
-function Wp({ x, y, n, total }: { x:number; y:number; n:number; total:number }) {
-  const isSS = n === total
-  const fill = isSS ? C.green : C.bgDark ?? '#03101d'
-  const stroke = isSS ? C.green : C.white
-  return (
-    <g>
-      <circle cx={x} cy={y} r="26" fill={fill} stroke={stroke} strokeWidth="3.5"/>
-      <text x={x} y={y+8} fontSize="20" fill={C.white} textAnchor="middle" fontWeight="900"
-        fontFamily="'Inter',Arial,sans-serif">{n}</text>
-    </g>
-  )
-}
-
-function SafetyBadge({ x, y }: { x:number; y:number }) {
-  return (
-    <g>
-      <rect x={x-96} y={y-26} width="192" height="46" rx="10" fill={C.green} opacity="0.97"/>
-      <text x={x} y={y-5} fontSize="16" fill={C.white} textAnchor="middle" fontWeight="800"
-        fontFamily="'Inter',Arial,sans-serif" letterSpacing="1">SAFETY STOP</text>
-      <text x={x} y={y+14} fontSize="13" fill="rgba(255,255,255,0.75)" textAnchor="middle"
-        fontFamily="'Inter',Arial,sans-serif">5 metres  ·  3 minutes</text>
-    </g>
-  )
-}
-
-function HazardTag({ x, y, text }: { x:number; y:number; text:string }) {
-  const t = text.length > 28 ? text.slice(0,27)+'…' : text
-  const w = t.length * 10.5 + 56
-  return (
-    <g>
-      <rect x={x} y={y-22} width={w} height="38" rx="8" fill={C.redBg} stroke={C.red} strokeWidth="1.8"/>
-      {/* warning triangle icon */}
-      <polygon points={`${x+14},${y+8} ${x+22},${y-14} ${x+30},${y+8}`}
-        fill="none" stroke={C.red} strokeWidth="2" strokeLinejoin="round"/>
-      <text x={x+22} y={y+5} fontSize="12" fill={C.red} textAnchor="middle" fontWeight="800"
-        fontFamily="'Inter',Arial,sans-serif">!</text>
-      <text x={x+42} y={y+4} fontSize="14" fill="#f87171" fontWeight="600"
-        fontFamily="'Inter',Arial,sans-serif">{t}</text>
-    </g>
-  )
-}
-
-// ML label: flat vector style — coloured pill with species name + depth
-function MLTag({ x, y, name, depth }: { x:number; y:number; name:string; depth:string }) {
-  const label = name.length > 22 ? name.slice(0,21)+'…' : name
-  const w = label.length * 10 + 24
-  return (
-    <g>
-      <rect x={x} y={y-20} width={w} height="38" rx="8"
-        fill="rgba(3,16,29,0.9)" stroke={C.yellow} strokeWidth="1.8"/>
-      <rect x={x} y={y-20} width="4" height="38" rx="2" fill={C.yellow}/>
-      <text x={x+14} y={y-2} fontSize="14" fill={C.yellow} fontWeight="700"
-        fontFamily="'Inter',Arial,sans-serif" letterSpacing="0.3">{label}</text>
-      <text x={x+14} y={y+14} fontSize="12" fill={C.grey1}
-        fontFamily="'Inter',Arial,sans-serif">{depth}</text>
-    </g>
-  )
-}
-
-// ── TERRAIN TEMPLATES ─────────────────────────────────────────────────────
-
-function TrWreck({ md }: { md:number }) {
-  const keel = dY(md*0.76, md)
-  const deck = dY(md*0.45, md)
-  const bow = 210, stern = 780, mid = (bow+stern)/2
-  return (
-    <g>
-      {/* seabed sand */}
-      <path d={`M0 ${BY} Q${LP*0.55} ${BY-28} ${LP} ${BY} L${LP} ${BY+50} L0 ${BY+50} Z`}
-        fill="#b8924a" opacity="0.24"/>
-      {/* hull — organic shape */}
-      <path d={`M${bow} ${keel+8}
-                Q${bow+60} ${keel+28} ${mid} ${keel+18} Q${stern-80} ${keel+22} ${stern} ${keel-4}
-                L${stern-10} ${deck+16}
-                Q${mid} ${deck-10} ${bow+40} ${deck+14} Z`}
-        fill="#18271a" stroke="#253c22" strokeWidth="2.5"/>
-      {/* superstructure */}
-      <rect x={bow+90} y={deck-52} width="160" height="60" rx="6" fill="#111e12" stroke="#1e3020" strokeWidth="2"/>
-      <rect x={bow+120} y={deck-94} width="82" height="46" rx="5" fill="#0d170e" stroke="#1e3020" strokeWidth="1.5"/>
+      {/* hull */}
+      <path d={`M${x-56} ${y+4} Q${x-36} ${y-10} ${x} ${y-12} Q${x+36} ${y-10} ${x+56} ${y+4} Q${x+38} ${y+16} ${x-38} ${y+16} Z`}
+        fill={T.C.textSecondary} stroke={T.C.textMuted} strokeWidth="2"/>
+      {/* cabin */}
+      <rect x={x-18} y={y-34} width="36" height="24" rx="4" fill={T.C.textMuted} stroke={T.C.textDivider} strokeWidth="1.5"/>
       {/* mast */}
-      <line x1={bow+160} y1={deck-94} x2={bow+164} y2={deck-148} stroke="#1c2e1e" strokeWidth="5"/>
-      <line x1={bow+100} y1={deck-124} x2={bow+240} y2={deck-124} stroke="#1c2e1e" strokeWidth="2.5"/>
-      {/* portholes */}
-      {[bow+38,bow+200,bow+310,bow+430,bow+560,bow+680].map((px,i) => (
-        <circle key={i} cx={px} cy={(deck+keel)/2+4} r="9"
-          fill="none" stroke="#253c22" strokeWidth="2"/>
+      <line x1={x+2} y1={y-34} x2={x+2} y2={y-60} stroke={T.C.textMuted} strokeWidth="2.5"/>
+      {/* boom */}
+      <line x1={x-24} y1={y-50} x2={x+28} y2={y-50} stroke={T.C.textMuted} strokeWidth="1.5"/>
+      {/* dive flag on mast */}
+      <rect x={x+2} y={y-62} width="22" height="14" rx="2" fill={T.C.red} opacity="0.9"/>
+      <line x1={x+10} y1={y-55} x2={x+24} y2={y-62} stroke={T.C.textPrimary} strokeWidth="1.5"/>
+      {/* descent line */}
+      <line x1={x} y1={y+16} x2={x-10} y2={SURFACE_Y}
+        stroke={T.C.textMuted} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.6"/>
+      {/* label */}
+      <Txt x={x} y={y-82} size={T.F.caption} fill={T.C.textSecondary} weight="700"
+        anchor="middle" spacing="1.5">{label}</Txt>
+    </g>
+  )
+}
+
+// SHORE — land mass at waterline
+function ShoreEntry({ entry }: { entry: string }) {
+  const lx = T.DEPTH_GUTTER + 10
+  return (
+    <g>
+      {/* land */}
+      <path d={`M0 ${DIAGRAM_Y} L0 ${SURFACE_Y - 24}
+                Q${lx + 60} ${SURFACE_Y - 40} ${lx + 130} ${SURFACE_Y - 18}
+                Q${lx + 180} ${SURFACE_Y - 6} ${lx + 220} ${SURFACE_Y}
+                L0 ${SURFACE_Y} Z`}
+        fill="#2d5428"/>
+      {/* sand/rock at waterline */}
+      <path d={`M0 ${SURFACE_Y - 6}
+                Q${lx + 80} ${SURFACE_Y - 14} ${lx + 160} ${SURFACE_Y - 4}
+                Q${lx + 195} ${SURFACE_Y} ${lx + 224} ${SURFACE_Y}`}
+        fill={T.C.sandFill} opacity="0.7"/>
+      {/* label */}
+      <Txt x={lx + 110} y={SURFACE_Y - 48} size={T.F.caption}
+        fill={T.C.textSecondary} weight="700" anchor="middle" spacing="1.5">
+        {entry.toUpperCase()} ENTRY
+      </Txt>
+    </g>
+  )
+}
+
+// SURFACE LINE
+function SurfaceLine() {
+  return (
+    <g>
+      <line x1={T.DEPTH_GUTTER} y1={SURFACE_Y} x2={PANEL_X} y2={SURFACE_Y}
+        stroke="#5ab8d8" strokeWidth="1.8" strokeDasharray="12,7" opacity="0.5"/>
+      <Txt x={T.DEPTH_GUTTER + 8} y={SURFACE_Y - 8} size={T.F.caption}
+        fill={T.C.textSecondary} weight="600" spacing="1">SURFACE</Txt>
+    </g>
+  )
+}
+
+// DEPTH SCALE — every 5m, max depth marked in red
+function DepthScale({ maxDepth }: { maxDepth: number }) {
+  const marks: number[] = []
+  for (let d = 5; d <= maxDepth; d += 5) marks.push(d)
+  return (
+    <g>
+      {marks.map(d => {
+        const y = dY(d, maxDepth)
+        if (y > SEABED_Y + 8) return null
+        const isMax = d === maxDepth
+        return (
+          <g key={d}>
+            {/* grid line */}
+            <line x1={T.DEPTH_GUTTER} y1={y} x2={PANEL_X} y2={y}
+              stroke={isMax ? T.C.red : T.C.textDivider}
+              strokeWidth={isMax ? 1.8 : 0.8}
+              strokeDasharray={isMax ? '8,5' : '2,10'}
+              opacity={isMax ? 0.9 : 0.7}/>
+            {/* depth label */}
+            <Txt x={T.DEPTH_GUTTER - 6} y={y + 5} size={T.F.caption}
+              fill={isMax ? T.C.red : '#3a8cb8'}
+              weight={isMax ? '700' : '400'} anchor="end">
+              {d}m
+            </Txt>
+            {/* max depth marker */}
+            {isMax && (
+              <g>
+                <rect x={T.DEPTH_GUTTER + 6} y={y - 26} width={186} height={28}
+                  rx={T.R.sm} fill={T.C.bgRed}/>
+                <Txt x={T.DEPTH_GUTTER + 16} y={y - 6} size={T.F.body}
+                  fill={T.C.red} weight="700" spacing="0.5">
+                  MAX DEPTH  {d}m
+                </Txt>
+              </g>
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+// CURRENT — elegant directional arrows, 3 strengths
+function Current({ x, y, strength }: {
+  x: number; y: number; strength: 'weak'|'moderate'|'strong'
+}) {
+  const cfg = {
+    weak:     { n: 2, col: '#4a9ab8', label: 'MILD CURRENT' },
+    moderate: { n: 3, col: T.C.teal,  label: 'CURRENT' },
+    strong:   { n: 5, col: T.C.blue,  label: 'STRONG CURRENT' },
+  }[strength]
+  return (
+    <g>
+      {Array.from({length: cfg.n}).map((_, i) => (
+        <g key={i} transform={`translate(${x + i * 44}, ${y})`}>
+          {/* chevron arrow — clean, not chunky */}
+          <polyline points="-4,-12 12,0 -4,12" fill="none"
+            stroke={cfg.col} strokeWidth="2.5" strokeLinecap="round"
+            strokeLinejoin="round" opacity={0.55 + i * 0.1}/>
+        </g>
       ))}
-      {/* coral growth on hull */}
-      {[bow+30,bow+130,bow+260,bow+400,bow+540,bow+670,stern-100].map((cx,i) => (
-        <ellipse key={i} cx={cx} cy={keel+4}
-          rx={14+(i%4)*5} ry={11}
-          fill={['#174a17','#256b1f','#1c5c2c','#245a18','#173c26','#174a17','#1c5c2c'][i%7]}
-          opacity="0.92"/>
+      <Txt x={x + cfg.n * 44 + 12} y={y + 5} size={T.F.body}
+        fill={cfg.col} weight="600" spacing="1.5">{cfg.label}</Txt>
+    </g>
+  )
+}
+
+// WAYPOINT — numbered circle, green for safety stop
+function Waypoint({ x, y, n, isSS = false }: {
+  x:number; y:number; n:number; isSS?:boolean
+}) {
+  const r = 24
+  const bg = isSS ? T.C.green : T.C.bg
+  const st = isSS ? T.C.green : T.C.textPrimary
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r + 1} fill="rgba(0,0,0,0.3)"/> {/* shadow */}
+      <circle cx={x} cy={y} r={r} fill={bg} stroke={st} strokeWidth="3"/>
+      <Txt x={x} y={y + 7} size={T.F.ui} fill={T.C.textPrimary}
+        weight="800" anchor="middle">{n}</Txt>
+    </g>
+  )
+}
+
+// SAFETY STOP BADGE — sits above the last waypoint
+function SafetyStopBadge({ x, y }: { x:number; y:number }) {
+  const w = 192, h = 46
+  return (
+    <g>
+      <rect x={x - w/2} y={y - h - 12} width={w} height={h} rx={T.R.md}
+        fill={T.C.green} opacity="0.96"/>
+      <Txt x={x} y={y - h - 12 + 20} size={T.F.body} fill={T.C.textPrimary}
+        weight="800" anchor="middle" spacing="0.5">SAFETY STOP</Txt>
+      <Txt x={x} y={y - h - 12 + 38} size={T.F.caption}
+        fill="rgba(255,255,255,0.7)" anchor="middle">5 metres  ·  3 minutes</Txt>
+    </g>
+  )
+}
+
+// HAZARD TAG — consistent warning pill
+function HazardTag({ x, y, text }: { x:number; y:number; text:string }) {
+  const label = text.length > 26 ? text.slice(0, 25) + '…' : text
+  const w = label.length * 10.5 + 54
+  return (
+    <g>
+      <rect x={x} y={y - 20} width={w} height={36} rx={T.R.sm}
+        fill={T.C.bgRed} stroke={T.C.red} strokeWidth="1.5"/>
+      {/* warning triangle */}
+      <polygon points={`${x+14},${y+10} ${x+22},${y-14} ${x+30},${y+10}`}
+        fill="none" stroke={T.C.red} strokeWidth="2" strokeLinejoin="round"/>
+      <Txt x={x + 22} y={y + 5} size={11} fill={T.C.red} weight="800" anchor="middle">!</Txt>
+      <Txt x={x + 42} y={y + 4} size={T.F.body} fill="#f87070" weight="500">{label}</Txt>
+    </g>
+  )
+}
+
+// MARINE LIFE TAG — yellow-accented data pill, depth-positioned
+function MLTag({ x, y, name, depth }: { x:number; y:number; name:string; depth:string }) {
+  const label = name.length > 20 ? name.slice(0, 19) + '…' : name
+  const w = Math.max(label.length * 10.2 + 20, 140)
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={38} rx={T.R.sm}
+        fill="rgba(3,16,29,0.88)" stroke={T.C.yellow} strokeWidth="1.5"/>
+      {/* left accent bar */}
+      <rect x={x} y={y} width={4} height={38} rx={2} fill={T.C.yellow}/>
+      <Txt x={x + 16} y={y + 16} size={T.F.body} fill={T.C.yellow} weight="700">{label}</Txt>
+      <Txt x={x + 16} y={y + 32} size={T.F.caption} fill={T.C.textSecondary}>{depth}</Txt>
+    </g>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  4. TERRAIN TEMPLATES
+//  Each renders the underwater landscape for one site type.
+//  Same visual language, different geometry.
+//  Inputs: maxDepth (for scaling), any site-specific flags.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Shared seabed textures
+function SandBottom({ opacity = 0.22 }: { opacity?:number }) {
+  return (
+    <path d={`M${T.DEPTH_GUTTER} ${SEABED_Y}
+              Q${DRAW_W * 0.3 + T.DEPTH_GUTTER} ${SEABED_Y - 22}
+              ${DRAW_W * 0.6 + T.DEPTH_GUTTER} ${SEABED_Y - 10}
+              Q${DRAW_W * 0.85 + T.DEPTH_GUTTER} ${SEABED_Y}
+              ${PANEL_X} ${SEABED_Y}
+              L${PANEL_X} ${SEABED_Y + 50} L${T.DEPTH_GUTTER} ${SEABED_Y + 50} Z`}
+      fill={T.C.sand} opacity={opacity}/>
+  )
+}
+
+// TEMPLATE 1: WRECK
+function TplWreck({ md }: { md:number }) {
+  const keel = dY(md * 0.74, md)
+  const deck = dY(md * 0.44, md)
+  const bow  = T.DEPTH_GUTTER + 160
+  const stern= T.DEPTH_GUTTER + 820
+  const mid  = (bow + stern) / 2
+  return (
+    <g>
+      <SandBottom opacity={0.22}/>
+      {/* hull — organic silhouette */}
+      <path d={`M${bow} ${keel + 10}
+                Q${bow + 80} ${keel + 26} ${mid} ${keel + 18}
+                Q${stern - 60} ${keel + 22} ${stern} ${keel - 2}
+                L${stern - 8} ${deck + 18}
+                Q${mid} ${deck - 8} ${bow + 30} ${deck + 16} Z`}
+        fill={T.C.terrainFill} stroke={T.C.terrainStroke} strokeWidth="2.5"/>
+      {/* superstructure */}
+      <rect x={bow + 100} y={deck - 54} width={150} height={60} rx="6"
+        fill="#0e1e14" stroke={T.C.terrainStroke} strokeWidth="2"/>
+      <rect x={bow + 132} y={deck - 96} width={78} height={46} rx="5"
+        fill="#0a1610" stroke={T.C.terrainStroke} strokeWidth="1.5"/>
+      {/* mast */}
+      <line x1={bow + 170} y1={deck - 96} x2={bow + 174} y2={deck - 150}
+        stroke={T.C.terrainStroke} strokeWidth="4.5"/>
+      <line x1={bow + 104} y1={deck - 128} x2={bow + 248} y2={deck - 128}
+        stroke={T.C.terrainStroke} strokeWidth="2"/>
+      {/* portholes — consistent size and spacing */}
+      {[bow+44, bow+210, bow+330, bow+458, bow+588, bow+716].map((px, i) => (
+        <circle key={i} cx={px} cy={(deck + keel) / 2 + 4} r="9"
+          fill="none" stroke={T.C.terrainStroke} strokeWidth="2"/>
+      ))}
+      {/* coral growth on hull — organic blobs */}
+      {[bow+32, bow+144, bow+282, bow+440, bow+590, bow+730, stern-80].map((cx, i) => (
+        <ellipse key={i} cx={cx} cy={keel + 5}
+          rx={13 + (i % 4) * 5} ry={12}
+          fill={['#163816','#204e1a','#183028','#1e4c16','#163828','#204e1a','#163816'][i % 7]}
+          opacity="0.9"/>
       ))}
       {/* anchor chain */}
-      <path d={`M${bow+22} ${deck+12} Q${bow-40} ${dY(md*0.62,md)} ${bow-70} ${keel+12}`}
-        fill="none" stroke="#1e3020" strokeWidth="3.5" strokeDasharray="7,5"/>
-      {/* swim-through on bow */}
-      <path d={`M${bow+60} ${deck+8} Q${bow+90} ${deck-8} ${bow+130} ${deck+8}`}
-        fill="none" stroke="#20401e" strokeWidth="3"/>
+      <path d={`M${bow + 24} ${deck + 14} Q${bow - 44} ${dY(md*0.58,md)} ${bow - 72} ${keel + 12}`}
+        fill="none" stroke={T.C.terrainStroke} strokeWidth="3" strokeDasharray="7,5"/>
     </g>
   )
 }
 
-function TrWall({ md }: { md:number }) {
-  const wallX = 210
+// TEMPLATE 2: WALL
+function TplWall({ md }: { md:number }) {
+  const wx = T.DEPTH_GUTTER + 188
   return (
     <g>
-      {/* main wall body — irregular face */}
-      <path d={`M${wallX-30} ${SY}
-                Q${wallX-10} ${dY(md*0.12,md)} ${wallX+8} ${dY(md*0.25,md)}
-                Q${wallX-18} ${dY(md*0.40,md)} ${wallX+12} ${dY(md*0.55,md)}
-                Q${wallX-8} ${dY(md*0.70,md)} ${wallX+6} ${dY(md*0.85,md)}
-                Q${wallX+14} ${dY(md*0.95,md)} ${wallX+20} ${BY+50}
-                L${wallX-80} ${BY+50} L${wallX-80} ${SY} Z`}
-        fill="#122818" stroke="#1c3e24" strokeWidth="2"/>
-      {/* rock strata lines */}
-      {[0.18,0.32,0.48,0.62,0.76,0.90].map((f,i) => (
+      <SandBottom opacity={0.18}/>
+      {/* wall face — organic irregular surface */}
+      <path d={`M${wx - 60} ${SURFACE_Y}
+                Q${wx - 18} ${dY(md*0.10,md)} ${wx + 14} ${dY(md*0.22,md)}
+                Q${wx - 12} ${dY(md*0.36,md)} ${wx + 18} ${dY(md*0.50,md)}
+                Q${wx - 8}  ${dY(md*0.65,md)} ${wx + 12} ${dY(md*0.78,md)}
+                Q${wx + 18} ${dY(md*0.92,md)} ${wx + 22} ${SEABED_Y + 50}
+                L${wx - 80} ${SEABED_Y + 50} L${wx - 80} ${SURFACE_Y} Z`}
+        fill={T.C.terrainFill} stroke={T.C.terrainStroke} strokeWidth="2.2"/>
+      {/* rock strata */}
+      {[0.16, 0.30, 0.46, 0.60, 0.74, 0.88].map((f, i) => (
         <path key={i}
-          d={`M${wallX-60} ${dY(md*f,md)} Q${wallX} ${dY(md*f,md)+(i%2?6:-6)} ${wallX+14} ${dY(md*f,md)+(i%2?-4:4)}`}
-          fill="none" stroke="#1c3e24" strokeWidth="1.2" opacity="0.8"/>
+          d={`M${wx - 60} ${dY(md*f,md)} Q${wx} ${dY(md*f,md) + (i%2?7:-7)} ${wx + 16} ${dY(md*f,md) + (i%2?-4:4)}`}
+          fill="none" stroke={T.C.terrainStroke} strokeWidth="1.2" opacity="0.8"/>
       ))}
-      {/* sea fans — organic */}
+      {/* sea fans — 5 types, each unique but consistent style */}
       {[
-        {f:0.15, xo:-80, col:C.orange,  sz:90},
-        {f:0.30, xo:-50, col:'#9055d0', sz:70},
-        {f:0.47, xo:-100,col:C.red,     sz:110},
-        {f:0.63, xo:-60, col:'#f0a820', sz:80},
-        {f:0.80, xo:-90, col:'#40a8c8', sz:95},
-      ].map(({f,xo,col,sz},i) => {
-        const fy = dY(md*f, md)
-        return (
-          <g key={i} transform={`translate(${wallX+14},${fy})`}>
-            {/* stem */}
-            <line x1="0" y1="0" x2={xo*0.4} y2={-sz*0.5} stroke={col} strokeWidth="3" opacity="0.85"/>
-            {/* fan body — ellipse outline */}
-            <ellipse cx={xo*0.7} cy={-sz*0.65}
-              rx={sz*0.42} ry={sz*0.26}
-              fill="none" stroke={col} strokeWidth="2" opacity="0.65"
-              transform={`rotate(${-20+i*10},${xo*0.7},${-sz*0.65})`}/>
-            {/* branch */}
-            <line x1={xo*0.3} y1={-sz*0.3} x2={xo*0.85} y2={-sz*0.55}
-              stroke={col} strokeWidth="1.5" opacity="0.5"/>
-          </g>
-        )
-      })}
-      {/* black coral clusters */}
-      {[0.38,0.62,0.82].map((f,i) => {
-        const fy = dY(md*f, md)
-        return (
-          <g key={i} transform={`translate(${wallX-10},${fy})`}>
-            {[[-40,-60],[-20,-45],[-60,-42]].map(([bx,by],bi) => (
-              <line key={bi} x1="0" y1="0" x2={bx} y2={by}
-                stroke="#111" strokeWidth={3-bi*0.6}/>
-            ))}
-          </g>
-        )
-      })}
-      {/* sandy base */}
-      <path d={`M${wallX+20} ${BY} Q${LP*0.55} ${BY-22} ${LP} ${BY} L${LP} ${BY+50} L${wallX+20} ${BY+50} Z`}
-        fill="#b8924a" opacity="0.22"/>
-    </g>
-  )
-}
-
-function TrReef({ md }: { md:number }) {
-  return (
-    <g>
-      {/* reef slope — natural organic curve */}
-      <path d={`M120 ${SY+28}
-                Q260 ${SY+110} 420 ${dY(md*0.38,md)}
-                Q580 ${dY(md*0.56,md)} 780 ${dY(md*0.70,md)}
-                Q960 ${dY(md*0.80,md)} ${LP} ${BY}`}
-        fill="#122818" stroke="#1c3e24" strokeWidth="2.5" opacity="0.92"/>
-      {/* coral heads — varied sizes */}
-      {[
-        {x:180, f:0.11, r:34, col:'#256b1f'},
-        {x:290, f:0.20, r:28, col:'#6b2818'},
-        {x:400, f:0.31, r:38, col:'#1a5c3a'},
-        {x:510, f:0.42, r:24, col:'#502888'},
-        {x:630, f:0.52, r:30, col:'#185068'},
-        {x:760, f:0.62, r:26, col:'#5c3418'},
-        {x:880, f:0.70, r:20, col:'#256b1f'},
-        {x:990, f:0.75, r:28, col:'#38185c'},
-        {x:1100,f:0.78, r:22, col:'#186048'},
-      ].map((c,i) => (
-        <ellipse key={i} cx={c.x} cy={dY(md*c.f,md)} rx={c.r} ry={c.r*0.55} fill={c.col} opacity="0.90"/>
-      ))}
-      {/* soft coral branches */}
-      {[200,360,540,720,900,1060].map((cx,i) => {
-        const cy = dY(md*(0.14+i*0.10),md)
-        const cols = ['#d4a0e0','#e8d084','#88c8e0','#e89090','#90d8a0','#c0a8f0']
+        {f:0.14, xo:-72, col:T.C.orange, sz:88},
+        {f:0.30, xo:-46, col:'#9055cc', sz:68},
+        {f:0.48, xo:-96, col:T.C.red,   sz:106},
+        {f:0.64, xo:-58, col:'#e89820', sz:78},
+        {f:0.80, xo:-84, col:'#38a0c0', sz:92},
+      ].map(({f, xo, col, sz}, i) => {
+        const fy = dY(md * f, md)
+        const tx = wx + 18, ty = fy
         return (
           <g key={i}>
-            {[-14,-6,2,10,18].map(ox => (
-              <line key={ox} x1={cx+ox} y1={cy} x2={cx+ox+4} y2={cy-26}
-                stroke={cols[i%6]} strokeWidth="3" opacity="0.7"/>
-            ))}
+            {/* stem */}
+            <line x1={tx} y1={ty} x2={tx + xo * 0.45} y2={ty - sz * 0.52}
+              stroke={col} strokeWidth="2.8" strokeLinecap="round" opacity="0.9"/>
+            {/* fan ellipse */}
+            <ellipse cx={tx + xo * 0.78} cy={ty - sz * 0.68}
+              rx={sz * 0.40} ry={sz * 0.24}
+              fill="none" stroke={col} strokeWidth="1.8" opacity="0.60"
+              transform={`rotate(${-15 + i * 8}, ${tx + xo * 0.78}, ${ty - sz * 0.68})`}/>
+            {/* branch */}
+            <line x1={tx + xo * 0.28} y1={ty - sz * 0.28}
+              x2={tx + xo * 0.90} y2={ty - sz * 0.54}
+              stroke={col} strokeWidth="1.5" opacity="0.45"/>
           </g>
         )
       })}
-      {/* sand patches */}
-      <ellipse cx="850" cy={BY-18} rx="180" ry="22" fill="#b8924a" opacity="0.28"/>
-      <ellipse cx="1200" cy={BY-10} rx="140" ry="16" fill="#b8924a" opacity="0.22"/>
+      {/* black coral sprigs */}
+      {[0.36, 0.60, 0.82].map((f, i) => {
+        const fy = dY(md * f, md)
+        return (
+          <g key={i}>
+            <line x1={wx + 14} y1={fy} x2={wx - 36} y2={fy - 52}
+              stroke="#0e0e10" strokeWidth="3.5"/>
+            <line x1={wx - 12} y1={fy - 22} x2={wx - 48} y2={fy - 44}
+              stroke="#0e0e10" strokeWidth="2"/>
+            <line x1={wx - 24} y1={fy - 36} x2={wx - 52} y2={fy - 58}
+              stroke="#0e0e10" strokeWidth="1.5"/>
+          </g>
+        )
+      })}
     </g>
   )
 }
 
-function TrMuck({ md }: { md:number }) {
+// TEMPLATE 3: REEF SLOPE
+function TplReef({ md }: { md:number }) {
+  const ox = T.DEPTH_GUTTER
+  return (
+    <g>
+      <SandBottom/>
+      {/* reef slope — smooth natural curve */}
+      <path d={`M${ox + 100} ${SURFACE_Y + 32}
+                Q${ox + 240} ${SURFACE_Y + 100} ${ox + 420} ${dY(md*0.36,md)}
+                Q${ox + 590} ${dY(md*0.54,md)} ${ox + 800} ${dY(md*0.70,md)}
+                Q${ox + 980} ${dY(md*0.80,md)} ${PANEL_X} ${SEABED_Y}
+                L${PANEL_X} ${SEABED_Y + 50} L${ox + 100} ${SEABED_Y + 50} Z`}
+        fill={T.C.terrainFill} stroke={T.C.terrainStroke} strokeWidth="2.2" opacity="0.94"/>
+      {/* coral heads — varied size, depth-accurate placement */}
+      {[
+        {x:180, f:0.10, r:34}, {x:295, f:0.20, r:28}, {x:420, f:0.31, r:38},
+        {x:540, f:0.42, r:24}, {x:668, f:0.52, r:30}, {x:800, f:0.62, r:26},
+        {x:916, f:0.70, r:20}, {x:1040,f:0.75, r:28}, {x:1160,f:0.78, r:22},
+      ].map(({x,f,r}, i) => {
+        const cols = ['#20601a','#5c2414','#163c2c','#402070','#143c58',
+                      '#4a2c12','#20601a','#301258','#143c38']
+        return (
+          <ellipse key={i} cx={ox + x} cy={dY(md*f,md)} rx={r} ry={r*0.55}
+            fill={cols[i % cols.length]} opacity="0.92"/>
+        )
+      })}
+      {/* soft coral branches */}
+      {[180, 360, 560, 760, 960].map((x, i) => {
+        const cy = dY(md * (0.12 + i * 0.10), md)
+        const cols = ['#c898dc','#e4cc7a','#80c0d8','#dc8888','#88d098','#b8a0ec']
+        return (
+          <g key={i}>
+            {[-16,-8,0,8,16].map(ox2 => (
+              <line key={ox2} x1={ox+x+ox2} y1={cy} x2={ox+x+ox2+3} y2={cy-24}
+                stroke={cols[i%6]} strokeWidth="2.8" strokeLinecap="round" opacity="0.68"/>
+            ))}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+// TEMPLATE 4: MUCK
+function TplMuck({ md }: { md:number }) {
+  const ox = T.DEPTH_GUTTER
   return (
     <g>
       {/* black sand slope */}
-      <path d={`M0 ${SY+80}
-                Q350 ${BY-100} 750 ${BY-50}
-                Q1050 ${BY-20} ${LP} ${BY+10}
-                L${LP} ${BY+50} L0 ${BY+50} Z`}
-        fill="#12121e" stroke="#1c1c2c" strokeWidth="1.5"/>
-      {/* debris / rubble */}
-      {[160,300,460,620,780,940,1100,1280].map((rx,i) => (
-        <ellipse key={i} cx={rx} cy={dY(md*(0.25+i*0.07),md)}
-          rx={28+(i%4)*9} ry="10"
-          fill={i%2?'#1e1e2e':'#1a1a28'} opacity="0.85"/>
+      <path d={`M0 ${SURFACE_Y + 90}
+                Q${ox + 300} ${SEABED_Y - 110} ${ox + 720} ${SEABED_Y - 52}
+                Q${ox + 1000} ${SEABED_Y - 20} ${PANEL_X} ${SEABED_Y + 8}
+                L${PANEL_X} ${SEABED_Y + 50} L0 ${SEABED_Y + 50} Z`}
+        fill="#101018" stroke="#18182a" strokeWidth="1.5"/>
+      {/* rubble patches — irregular */}
+      {[180, 328, 498, 662, 832, 1008, 1188].map((rx, i) => (
+        <ellipse key={i}
+          cx={ox + rx} cy={dY(md*(0.24 + i*0.07), md)}
+          rx={26 + (i%4)*9} ry={10}
+          fill={i%2 ? '#181828' : '#141422'} opacity="0.88"/>
       ))}
-      {/* sea grass */}
-      {[220,400,580,780,980,1160].map((gx,i) => {
-        const gy = dY(md*(0.34+i*0.07),md)
+      {/* sea grass patches */}
+      {[220, 420, 630, 840, 1050].map((gx, i) => {
+        const gy = dY(md*(0.32 + i*0.07), md)
         return (
           <g key={i}>
-            {[-12,-5,2,9,16,23].map(ox => (
-              <line key={ox} x1={gx+ox} y1={gy}
-                x2={gx+ox+(i%2?3:-3)} y2={gy-22}
-                stroke="#285c1e" strokeWidth="2.2" opacity="0.72"/>
+            {[-14,-6,2,10,18,26].map(x2 => (
+              <line key={x2} x1={ox+gx+x2} y1={gy}
+                x2={ox+gx+x2+(i%2?3:-3)} y2={gy-22}
+                stroke="#245818" strokeWidth="2.2" strokeLinecap="round" opacity="0.70"/>
             ))}
           </g>
         )
       })}
-      {/* hydroids */}
-      {[340,700,1080].map((hx,i) => {
-        const hy = dY(md*(0.42+i*0.10),md)
+      {/* hydroid colonies */}
+      {[360, 728, 1096].map((hx, i) => {
+        const hy = dY(md*(0.40 + i*0.10), md)
         return (
           <g key={i}>
-            {[-8,-2,4,10].map(ox => (
-              <g key={ox}>
-                <line x1={hx+ox} y1={hy} x2={hx+ox} y2={hy-16} stroke="#3a3a50" strokeWidth="1.5"/>
+            {[-9,-2,5,12].map(x2 => (
+              <g key={x2}>
+                <line x1={ox+hx+x2} y1={hy} x2={ox+hx+x2} y2={hy-18}
+                  stroke="#303048" strokeWidth="1.8"/>
                 {[-4,0,4].map(tx => (
-                  <line key={tx} x1={hx+ox+tx} y1={hy-16}
-                    x2={hx+ox+tx+(tx>0?4:tx<0?-4:0)} y2={hy-24}
-                    stroke="#4a4a64" strokeWidth="1"/>
+                  <line key={tx} x1={ox+hx+x2+tx} y1={hy-18}
+                    x2={ox+hx+x2+tx+(tx>0?5:tx<0?-5:0)} y2={hy-27}
+                    stroke="#404060" strokeWidth="1"/>
                 ))}
               </g>
             ))}
@@ -439,588 +642,643 @@ function TrMuck({ md }: { md:number }) {
   )
 }
 
-function TrPinnacle({ md }: { md:number }) {
-  const px = LP*0.42, py = dY(md*0.06,md)
+// TEMPLATE 5: PINNACLE / SEAMOUNT
+function TplPinnacle({ md }: { md:number }) {
+  const cx = T.DEPTH_GUTTER + DRAW_W * 0.42
+  const py = dY(md * 0.06, md)
   return (
     <g>
+      <SandBottom opacity={0.20}/>
       {/* primary pinnacle */}
-      <path d={`M${px-200} ${BY}
-                Q${px-110} ${py+120} ${px-30} ${py+30}
-                Q${px} ${py} ${px+30} ${py+30}
-                Q${px+110} ${py+120} ${px+200} ${BY} Z`}
-        fill="#122818" stroke="#1c3e24" strokeWidth="2.5"/>
-      {/* secondary */}
-      <path d={`M${px+240} ${BY}
-                Q${px+320} ${py+220} ${px+400} ${py+140}
-                Q${px+460} ${py+220} ${px+540} ${BY} Z`}
-        fill="#0e1e12" stroke="#182c1e" strokeWidth="1.5" opacity="0.85"/>
-      {/* coral on sides */}
-      {[-140,-60,60,140].map((ox,i) => {
-        const cpy = dY(md*(0.18+i*0.12),md)
-        return <ellipse key={i} cx={px+ox} cy={cpy} rx="22" ry="12"
-          fill={['#256b1f','#6b2818','#1a5c3a','#502888'][i]} opacity="0.9"/>
+      <path d={`M${cx - 210} ${SEABED_Y}
+                Q${cx - 110} ${py + 130} ${cx - 28} ${py + 32}
+                Q${cx} ${py} ${cx + 28} ${py + 32}
+                Q${cx + 110} ${py + 130} ${cx + 210} ${SEABED_Y} Z`}
+        fill={T.C.terrainFill} stroke={T.C.terrainStroke} strokeWidth="2.5"/>
+      {/* secondary pinnacle */}
+      <path d={`M${cx + 250} ${SEABED_Y}
+                Q${cx + 330} ${py + 230} ${cx + 412} ${py + 145}
+                Q${cx + 478} ${py + 230} ${cx + 560} ${SEABED_Y} Z`}
+        fill="#0c1c10" stroke="#162a18" strokeWidth="1.8" opacity="0.85"/>
+      {/* coral on pinnacle */}
+      {[-148,-60,60,148].map((ox, i) => {
+        const cpy = dY(md*(0.17 + i*0.12), md)
+        const cols = ['#206018','#5c2014','#163c2c','#402068']
+        return <ellipse key={i} cx={cx+ox} cy={cpy} rx={24} ry={13}
+          fill={cols[i%4]} opacity="0.92"/>
       })}
-      {/* sandy basin */}
-      <path d={`M0 ${BY} L${LP} ${BY} L${LP} ${BY+50} L0 ${BY+50} Z`}
-        fill="#b8924a" opacity="0.26"/>
     </g>
   )
 }
 
-function TrDrift({ md }: { md:number }) {
+// TEMPLATE 6: DRIFT / CHANNEL
+function TplDrift({ md }: { md:number }) {
+  const ox = T.DEPTH_GUTTER
   return (
     <g>
       {/* left reef wall */}
-      <path d={`M0 ${SY+50}
-                Q180 ${dY(md*0.28,md)} 380 ${dY(md*0.52,md)}
-                Q500 ${dY(md*0.72,md)} ${LP*0.4} ${BY}`}
-        fill="#122818" stroke="#1c3e24" strokeWidth="2.5"/>
-      {/* right reef */}
+      <path d={`M0 ${SURFACE_Y + 56}
+                Q${ox+160} ${dY(md*0.28,md)} ${ox+370} ${dY(md*0.52,md)}
+                Q${ox+490} ${dY(md*0.72,md)} ${ox+DRAW_W*0.42} ${SEABED_Y}
+                L${T.DEPTH_GUTTER} ${SEABED_Y} Z`}
+        fill={T.C.terrainFill} stroke={T.C.terrainStroke} strokeWidth="2.2"/>
+      {/* right reef wall */}
       <path d={`M0 ${dY(md*0.14,md)}
-                Q160 ${dY(md*0.36,md)} 340 ${dY(md*0.54,md)}
-                Q480 ${BY-30} 660 ${BY}`}
-        fill="#0e1e12" stroke="#182c1e" strokeWidth="1.5" opacity="0.75"/>
-      {/* strong current visual — animated feel via layered arrows */}
-      {[SY+90,SY+170,SY+250,SY+330].map((cy,ri) => (
-        Array.from({length:7}).map((_,i) => (
-          <path key={`${ri}-${i}`}
-            d={`M${80+i*200} ${cy-14} L${80+i*200+28} ${cy} L${80+i*200} ${cy+14} L${80+i*200+10} ${cy} Z`}
-            fill={C.teal} opacity={0.35+ri*0.07}/>
+                Q${ox+140} ${dY(md*0.34,md)} ${ox+320} ${dY(md*0.54,md)}
+                Q${ox+460} ${SEABED_Y - 28} ${ox+650} ${SEABED_Y}`}
+        fill="#0c1c10" stroke="#162a18" strokeWidth="1.6" opacity="0.78"/>
+      {/* channel current — layered chevrons */}
+      {[SURFACE_Y+80, SURFACE_Y+160, SURFACE_Y+240, SURFACE_Y+320].map((cy, ri) => (
+        Array.from({length: 6}).map((_, i) => (
+          <polyline key={`${ri}-${i}`}
+            points={`${ox+60+i*210},${cy-14} ${ox+82+i*210},${cy} ${ox+60+i*210},${cy+14}`}
+            fill="none" stroke={T.C.teal}
+            strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            opacity={0.28 + ri * 0.08}/>
         ))
       ))}
-      {/* channel sand bottom */}
-      <ellipse cx={LP*0.5} cy={BY-14} rx="340" ry="20" fill="#b8924a" opacity="0.28"/>
+      <SandBottom opacity={0.20}/>
     </g>
   )
 }
 
-// Template selector
-function Terrain({ site }: { site:DiveSite }) {
+// Template selector — maps site data to correct template
+function Terrain({ site }: { site: DiveSite }) {
   const md = site.maxDepth
-  const n = site.name.toLowerCase()
-  if (site.diagramType === 'wreck') return <TrWreck md={md}/>
-  if (site.diagramType === 'wall')  return <TrWall  md={md}/>
-  if (site.type === 'Muck')         return <TrMuck  md={md}/>
-  if (site.type === 'Drift')        return <TrDrift md={md}/>
-  if (n.includes('pinnacle')||n.includes('magic')||n.includes('mount')||n.includes('seamount'))
-                                    return <TrPinnacle md={md}/>
-  return <TrReef md={md}/>
+  const n  = site.name.toLowerCase()
+  const isPinnacle = n.includes('pinnacle')||n.includes('magic')||n.includes('mount')||n.includes('blue magic')
+  if (site.diagramType === 'wreck') return <TplWreck md={md}/>
+  if (site.diagramType === 'wall')  return <TplWall  md={md}/>
+  if (site.type === 'Muck')         return <TplMuck  md={md}/>
+  if (site.type === 'Drift')        return <TplDrift md={md}/>
+  if (isPinnacle)                   return <TplPinnacle md={md}/>
+  return <TplReef md={md}/>
 }
 
-// ── DIVE ROUTES ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+//  5. ROUTE SYSTEM
+//  Each template has a matching route. Points are terrain-aware.
+// ─────────────────────────────────────────────────────────────────────────
 
-function DiveRoute({ pts }: { pts:[number,number][] }) {
-  const n = pts.length
-  const d = pts.map(([x,y],i)=>`${i===0?'M':'L'}${x} ${y}`).join(' ')
+function DiveRouteLine({ pts, total }: { pts:[number,number][]; total:number }) {
+  const d = pts.map(([x,y],i) => `${i===0?'M':'L'}${x} ${y}`).join(' ')
   return (
     <g>
-      {/* subtle glow behind line */}
-      <path d={d} fill="none" stroke="rgba(255,255,255,0.15)"
-        strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* main route */}
-      <path d={d} fill="none" stroke={C.white}
-        strokeWidth="3.5" strokeDasharray="16,9" strokeLinecap="round" strokeLinejoin="round" opacity="0.92"/>
+      {/* route glow — increases legibility over terrain */}
+      <path d={d} fill="none" stroke="rgba(255,255,255,0.12)"
+        strokeWidth="14" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* route line */}
+      <path d={d} fill="none" stroke={T.C.route}
+        strokeWidth="3.5" strokeDasharray="16,9"
+        strokeLinecap="round" strokeLinejoin="round" opacity="0.94"/>
       {/* waypoints */}
-      {pts.map(([x,y],i) => <Wp key={i} x={x} y={y} n={i+1} total={n}/>)}
-      {/* safety stop badge above last point */}
-      <SafetyBadge x={pts[n-1][0]} y={pts[n-1][1]-62}/>
+      {pts.map(([x,y],i) => (
+        <Waypoint key={i} x={x} y={y} n={i+1} isSS={i===total-1}/>
+      ))}
+      {/* safety stop badge */}
+      <SafetyStopBadge x={pts[total-1][0]} y={pts[total-1][1]}/>
     </g>
   )
 }
 
-function RouteWreck({ md, isBoat }: { md:number; isBoat:boolean }) {
-  const keel = dY(md*0.76,md), deck = dY(md*0.45,md)
-  const pts: [number,number][] = isBoat
-    ? [[350,SY+22],[240,deck+16],[420,(deck+keel)/2+8],[620,keel-8],[820,dY(md*0.20,md)]]
-    : [[160,SY+12],[240,deck+16],[420,(deck+keel)/2+8],[620,keel-8],[780,dY(md*0.20,md)]]
-  return <DiveRoute pts={pts}/>
-}
+function getRoutePoints(site: DiveSite): [number,number][] {
+  const { maxDepth:md, diagramType, type, access } = site
+  const boat = access === 'Boat'
+  const ox = T.DEPTH_GUTTER
+  const ex = boat ? ox + 320 : ox + 140  // entry x
 
-function RouteWall({ md, isBoat }: { md:number; isBoat:boolean }) {
-  const pts: [number,number][] = [
-    [isBoat?400:260, SY+22],
-    [290, dY(md*0.26,md)],
-    [310, dY(md*0.55,md)],
-    [330, dY(md*0.84,md)],
-    [600, dY(md*0.16,md)],
+  if (diagramType === 'wreck') {
+    const keel = dY(md*0.74,md), deck = dY(md*0.44,md)
+    return [
+      [ex,             SURFACE_Y+22],
+      [ox + 240,       deck+18],
+      [ox + 420,       (deck+keel)/2+8],
+      [ox + 640,       keel-8],
+      [ox + 860,       dY(md*0.20,md)],
+    ]
+  }
+  if (diagramType === 'wall') return [
+    [boat?ox+380:ox+240, SURFACE_Y+22],
+    [ox + 270,           dY(md*0.26,md)],
+    [ox + 292,           dY(md*0.54,md)],
+    [ox + 314,           dY(md*0.84,md)],
+    [ox + 580,           dY(md*0.18,md)],
   ]
-  return <DiveRoute pts={pts}/>
-}
-
-function RouteReef({ md, isBoat }: { md:number; isBoat:boolean }) {
-  const pts: [number,number][] = [
-    [isBoat?400:180, SY+22],
-    [310, dY(md*0.24,md)],
-    [500, dY(md*0.52,md)],
-    [740, dY(md*0.80,md)],
-    [920, dY(md*0.16,md)],
+  if (type === 'Muck') return [
+    [ox + 220,  SURFACE_Y+22],
+    [ox + 370,  dY(md*0.30,md)],
+    [ox + 560,  dY(md*0.52,md)],
+    [ox + 760,  dY(md*0.70,md)],
+    [ox + 940,  dY(md*0.20,md)],
   ]
-  return <DiveRoute pts={pts}/>
-}
-
-function RouteMuck({ md }: { md:number }) {
-  const pts: [number,number][] = [
-    [240, SY+22],
-    [380, dY(md*0.30,md)],
-    [560, dY(md*0.52,md)],
-    [760, dY(md*0.70,md)],
-    [920, dY(md*0.20,md)],
+  // Reef / default
+  return [
+    [ex,         SURFACE_Y+22],
+    [ox + 300,   dY(md*0.24,md)],
+    [ox + 500,   dY(md*0.52,md)],
+    [ox + 740,   dY(md*0.80,md)],
+    [ox + 940,   dY(md*0.18,md)],
   ]
-  return <DiveRoute pts={pts}/>
 }
 
-function Route({ site }: { site:DiveSite }) {
-  const md = site.maxDepth, isBoat = site.access==='Boat'
-  if (site.diagramType==='wreck') return <RouteWreck md={md} isBoat={isBoat}/>
-  if (site.diagramType==='wall')  return <RouteWall  md={md} isBoat={isBoat}/>
-  if (site.type==='Muck')         return <RouteMuck  md={md}/>
-  return <RouteReef md={md} isBoat={isBoat}/>
-}
+// ─────────────────────────────────────────────────────────────────────────
+//  6. MARINE LIFE POSITIONING
+//  Each template has its own placement grid — never random.
+// ─────────────────────────────────────────────────────────────────────────
 
-// ── MARINE LIFE POSITIONS ─────────────────────────────────────────────────
-function mlPositions(site: DiveSite): [number,number][] {
+function getMLPositions(site: DiveSite): [number,number][] {
   const md = site.maxDepth
-  if (site.diagramType==='wreck') return [
-    [860, dY(md*0.16,md)],
-    [920, dY(md*0.34,md)],
-    [870, dY(md*0.54,md)],
-    [940, dY(md*0.68,md)],
-    [860, dY(md*0.44,md)],
+  const ox = T.DEPTH_GUTTER
+  if (site.diagramType === 'wreck') return [
+    [ox+880, dY(md*0.15,md)], [ox+940, dY(md*0.34,md)],
+    [ox+870, dY(md*0.54,md)], [ox+950, dY(md*0.66,md)],
+    [ox+880, dY(md*0.44,md)],
   ]
-  if (site.diagramType==='wall') return [
-    [400, dY(md*0.20,md)],
-    [460, dY(md*0.38,md)],
-    [500, dY(md*0.58,md)],
-    [440, dY(md*0.74,md)],
-    [700, dY(md*0.30,md)],
+  if (site.diagramType === 'wall') return [
+    [ox+390, dY(md*0.20,md)], [ox+440, dY(md*0.38,md)],
+    [ox+480, dY(md*0.58,md)], [ox+420, dY(md*0.74,md)],
+    [ox+700, dY(md*0.30,md)],
   ]
-  if (site.type==='Muck') return [
-    [560, dY(md*0.26,md)-52],
-    [750, dY(md*0.44,md)-52],
-    [900, dY(md*0.60,md)-52],
-    [660, dY(md*0.74,md)-52],
-    [440, dY(md*0.50,md)-52],
+  if (site.type === 'Muck') return [
+    [ox+560, dY(md*0.26,md)-52], [ox+754, dY(md*0.44,md)-52],
+    [ox+900, dY(md*0.60,md)-52], [ox+660, dY(md*0.74,md)-52],
+    [ox+440, dY(md*0.50,md)-52],
   ]
   return [
-    [980, dY(md*0.18,md)],
-    [860, dY(md*0.38,md)],
-    [1000,dY(md*0.56,md)],
-    [880, dY(md*0.72,md)],
-    [960, dY(md*0.28,md)],
+    [ox+980, dY(md*0.17,md)], [ox+860, dY(md*0.37,md)],
+    [ox+1000,dY(md*0.55,md)], [ox+880, dY(md*0.70,md)],
+    [ox+960, dY(md*0.27,md)],
   ]
 }
 
-// ── TIMELINE DATA ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+//  7. DATA FUNCTIONS
+//  Generate timeline, waypoints, tips from site data. No hardcoding.
+// ─────────────────────────────────────────────────────────────────────────
+
 type TLStep = { time:string; phase:string; sub:string }
-function getTimeline(site: DiveSite): TLStep[] {
+
+function buildTimeline(site: DiveSite): TLStep[] {
   const { diagramType, type, access, maxDepth:md } = site
-  const exit = access==='Boat' ? 'By boat' : 'Shore exit'
-  if (diagramType==='wreck') return [
-    {time:'0–5 min',  phase:'DESCEND',     sub:'Mooring line to wreck'},
-    {time:'5–15 min', phase:'BOW SECTION', sub:'Explore bow & photos'},
-    {time:'15–25 min',phase:'MID SHIP',    sub:'Engine room & cargo'},
-    {time:'25–35 min',phase:'STERN',       sub:`Propeller · ${md}m max`},
-    {time:'35–40 min',phase:'RETURN',      sub:'Sandy slope ascent'},
-    {time:'40–48 min',phase:'SAFETY STOP', sub:'5m · 3 min'},
-    {time:'48–50 min',phase:'EXIT',        sub:exit},
+  const exit = access === 'Boat' ? 'By boat' : 'Shore exit'
+  if (diagramType === 'wreck') return [
+    {time:'0–5 min',  phase:'DESCEND',      sub:'Mooring line to wreck'},
+    {time:'5–15 min', phase:'BOW',          sub:'Explore bow & take photos'},
+    {time:'15–25 min',phase:'MID SHIP',     sub:'Engine room & cargo holds'},
+    {time:'25–35 min',phase:'STERN',        sub:`Propeller · max ${md}m`},
+    {time:'35–40 min',phase:'RETURN',       sub:'Sandy slope ascent'},
+    {time:'40–48 min',phase:'SAFETY STOP',  sub:'5m · 3 minutes'},
+    {time:'48–50 min',phase:'EXIT',         sub:exit},
   ]
-  if (diagramType==='wall') return [
-    {time:'0–5 min',  phase:'DESCEND',     sub:'Entry & descent'},
-    {time:'5–15 min', phase:'UPPER WALL',  sub:'Coral · fans · fish life'},
-    {time:'15–25 min',phase:'MID WALL',    sub:`~${Math.round(md*0.55)}m section`},
-    {time:'25–35 min',phase:'DEEP SECTION',sub:`Max ${md}m · turn`},
-    {time:'35–42 min',phase:'ASCENT',      sub:'Return up the wall'},
-    {time:'42–48 min',phase:'SAFETY STOP', sub:'5m · 3 min'},
-    {time:'48–50 min',phase:'EXIT',        sub:exit},
+  if (diagramType === 'wall') return [
+    {time:'0–5 min',  phase:'DESCEND',      sub:'Entry & descent'},
+    {time:'5–15 min', phase:'UPPER WALL',   sub:'Corals · fans · fish life'},
+    {time:'15–25 min',phase:'MID WALL',     sub:`~${Math.round(md*.55)}m`},
+    {time:'25–35 min',phase:'DEEP WALL',    sub:`Max ${md}m · turn`},
+    {time:'35–42 min',phase:'ASCENT',       sub:'Return up wall'},
+    {time:'42–48 min',phase:'SAFETY STOP',  sub:'5m · 3 minutes'},
+    {time:'48–50 min',phase:'EXIT',         sub:exit},
   ]
-  if (type==='Muck') return [
-    {time:'0–5 min',  phase:'ENTRY',       sub:'Slow controlled descent'},
-    {time:'5–20 min', phase:'SAND ZONE 1', sub:'Systematic grid search'},
-    {time:'20–35 min',phase:'RUBBLE ZONE', sub:'Macro critters & rare finds'},
-    {time:'35–45 min',phase:'RETURN',      sub:'Retrace route slowly'},
-    {time:'45–50 min',phase:'ASCENT',      sub:'Slow & controlled'},
-    {time:'50–53 min',phase:'SAFETY STOP', sub:'5m · 3 min'},
-    {time:'53–55 min',phase:'EXIT',        sub:exit},
+  if (type === 'Muck') return [
+    {time:'0–5 min',  phase:'ENTRY',        sub:'Slow controlled descent'},
+    {time:'5–20 min', phase:'GRID SEARCH',  sub:'Sand zone systematic'},
+    {time:'20–35 min',phase:'RUBBLE ZONE',  sub:'Macro critters & rare finds'},
+    {time:'35–45 min',phase:'RETURN',       sub:'Retrace route slowly'},
+    {time:'45–50 min',phase:'ASCENT',       sub:'Slow & controlled'},
+    {time:'50–53 min',phase:'SAFETY STOP',  sub:'5m · 3 minutes'},
+    {time:'53–55 min',phase:'EXIT',         sub:exit},
   ]
   return [
-    {time:'0–5 min',  phase:'DESCEND',     sub:'Entry & descent'},
-    {time:'5–15 min', phase:'SHALLOW REEF',sub:`~${Math.round(md*0.25)}m`},
-    {time:'15–25 min',phase:'MAIN REEF',   sub:`~${Math.round(md*0.55)}m`},
-    {time:'25–35 min',phase:'DEEP POINT',  sub:`Max ${md}m · turn`},
-    {time:'35–42 min',phase:'RETURN',      sub:'Ascend reef slope'},
-    {time:'42–48 min',phase:'SAFETY STOP', sub:'5m · 3 min'},
-    {time:'48–50 min',phase:'EXIT',        sub:exit},
+    {time:'0–5 min',  phase:'DESCEND',      sub:'Entry & descent'},
+    {time:'5–15 min', phase:'SHALLOW REEF', sub:`~${Math.round(md*.25)}m`},
+    {time:'15–25 min',phase:'MAIN REEF',    sub:`~${Math.round(md*.55)}m`},
+    {time:'25–35 min',phase:'DEEP POINT',   sub:`Max ${md}m · turn`},
+    {time:'35–42 min',phase:'RETURN',       sub:'Ascend reef slope'},
+    {time:'42–48 min',phase:'SAFETY STOP',  sub:'5m · 3 minutes'},
+    {time:'48–50 min',phase:'EXIT',         sub:exit},
   ]
 }
 
-// ── WAYPOINT LABELS ───────────────────────────────────────────────────────
-function getWaypoints(site: DiveSite): string[] {
+function buildWaypoints(site: DiveSite): string[] {
   const { diagramType, type, access } = site
-  const e = access==='Boat' ? 'Boat entry & descent' : 'Shore entry & descend'
-  if (diagramType==='wreck') return [e,'Wreck bow — explore','Mid-ship · engine room','Stern · max depth','Safety stop · exit']
-  if (diagramType==='wall')  return [e,'Upper wall · corals & fans','Mid-wall section',`Max depth · turn`,'Safety stop · exit']
-  if (type==='Muck')         return ['Entry — slow descent','Sand zone 1 · grid search','Rubble zone · critters','Return route','Safety stop · exit']
+  const e = access === 'Boat' ? 'Boat entry & descent' : 'Shore entry & descend'
+  if (diagramType === 'wreck') return [e,'Wreck bow — explore','Mid-ship · engine room','Stern · max depth','Safety stop · exit']
+  if (diagramType === 'wall')  return [e,'Upper wall · corals','Mid-wall section','Max depth · turn','Safety stop · exit']
+  if (type === 'Muck')         return ['Entry — slow descent','Sand zone · grid search','Rubble zone · critters','Return route','Safety stop · exit']
   return [e,'Shallow reef · photos','Main reef · highlights','Deep point · turn','Safety stop · exit']
 }
 
-// ── PRO TIPS ──────────────────────────────────────────────────────────────
-type Tip = { icon:string; label:string; text:string }
-function getTips(site: DiveSite): Tip[] {
+type Tip = {icon:string; label:string; text:string}
+function buildTips(site: DiveSite): Tip[] {
   const { diagramType, type, current, marineLife, area } = site
   const ml0 = marineLife[0]?.name ?? 'marine life'
-  const strong = current.toLowerCase().includes('strong') || current.toLowerCase().includes('very')
-  const tips: Tip[] = []
-  if (diagramType==='wreck')
-    tips.push({icon:'📷',label:'PHOTOGRAPHY',text:`Wide-angle for the hull, macro lens for critters and nudibranchs on the sandy slope`})
-  else if (type==='Muck')
-    tips.push({icon:'🔍',label:'CRITTER TIP',text:`Move at a crawl — your divemaster will spot for you. Never touch or disturb the substrate`})
-  else if (diagramType==='wall')
-    tips.push({icon:'🔭',label:'LOOK CLOSELY',text:`Inspect every sea fan for pygmy seahorses. Check crevices and overhangs on the ascent`})
-  else
-    tips.push({icon:'🌅',label:'BEST TIMING',text:`Morning dives offer best visibility and the most active ${ml0} encounters of the day`})
-  tips.push({icon:'👥',label:'FOLLOW GUIDE',  text:'Stay with your buddy and follow the planned route and guide at all times underwater'})
-  tips.push({icon:'🚫',label:"DON'T TOUCH",   text:'Respect all reef, wreck, and marine life. Hands off everything — always'})
-  tips.push({icon:'🎯',label:'MONITOR AIR',   text:'Check your pressure regularly. Signal your guide at 100 bar. Never push limits'})
-  if (strong)
-    tips.push({icon:'⚠️',label:'CURRENT ALERT',text:'Carry SMB at all times. Enter only at planned tide. Stay close to guide and reef'})
-  else
-    tips.push({icon:'❤️',label:'ENJOY THE DIVE',text:`One of ${area}'s most iconic and memorable dive experiences — savour every moment`})
-  return tips
+  const strong = /strong|very/i.test(current)
+  const t1: Tip = diagramType === 'wreck'
+    ? {icon:'📷',label:'PHOTOGRAPHY',  text:'Wide-angle for the hull. Macro lens for critters on the sandy slope.'}
+    : type === 'Muck'
+    ? {icon:'🔍',label:'CRITTER TIP',  text:'Move at a crawl. Your divemaster spots. Never touch the substrate.'}
+    : diagramType === 'wall'
+    ? {icon:'🔭',label:'LOOK CLOSELY', text:'Check every sea fan for pygmy seahorses. Inspect crevices on ascent.'}
+    : {icon:'🌅',label:'BEST TIMING',  text:`Morning for best visibility and active ${ml0}.`}
+  return [
+    t1,
+    {icon:'👥',label:'FOLLOW GUIDE',   text:'Stay with your buddy. Follow the planned route at all times.'},
+    {icon:'🚫',label:"DON'T TOUCH",    text:'Respect all reef and marine life. Hands off everything underwater.'},
+    {icon:'🎯',label:'MONITOR AIR',    text:'Check pressure regularly. Signal guide at 100 bar. No limits.'},
+    strong
+      ? {icon:'⚠️',label:'CURRENT ALERT', text:`Carry SMB. Enter only at planned tide. Stay close to guide.`}
+      : {icon:'❤️',label:'ENJOY THE DIVE',text:`One of ${area}'s most iconic dive experiences.`},
+  ]
 }
 
-// ── MAIN COMPONENT ────────────────────────────────────────────────────────
-export default function DiveBriefingCard({ site }: { site:DiveSite }) {
-  const {
-    maxDepth:md, minDepth, visibility, temp, difficulty, minCert,
-    bestTime, bestSeason, type, access, current, name, area,
-    marineLife, safetyNotes, rank, rating, reviews,
-  } = site
+// ─────────────────────────────────────────────────────────────────────────
+//  8. RIGHT PANEL — LEGEND + HAZARDS + WAYPOINTS + RATING
+// ─────────────────────────────────────────────────────────────────────────
 
-  const isBoat    = access==='Boat'
-  const hasStrong = current.toLowerCase().includes('strong')||current.toLowerCase().includes('very')
-  const curStr    = hasStrong ? 'strong' : (current.toLowerCase().includes('mild')||current.toLowerCase().includes('weak')) ? 'weak' : 'moderate'
-  const id        = site.slug.replace(/[^a-z0-9]/g,'-')
+const LEGEND_ITEMS: [string, string, string][] = [
+  ['╌', T.C.textPrimary, 'Route'],
+  ['●', T.C.green,       'Safety Stop'],
+  ['▲', T.C.blue,        'Pick Up / Exit'],
+  ['▶', T.C.teal,        'Current'],
+  ['█', T.C.yellow,      'Marine Life'],
+  ['▲', T.C.red,         'Hazard'],
+  ['📷',T.C.orange,      'Photo Opportunity'],
+]
 
-  // depth markers every 5m
-  const dMarks: number[] = []
-  for (let d=0; d<=md; d+=5) dMarks.push(d)
+function RightPanel({ site, hazards, waypoints }: {
+  site: DiveSite; hazards: string[]; waypoints: string[]
+}) {
+  const px = PANEL_X + T.S24
+  const pw = T.PANEL_W - T.S48
+  let cy = DIAGRAM_Y + T.S24
 
-  const ml   = marineLife.slice(0,5)
-  const mlP  = mlPositions(site)
-  const haz  = safetyNotes.slice(0,3)
-  const tl   = getTimeline(site)
-  const wpts = getWaypoints(site)
-  const tips = getTips(site)
+  // LEGEND card
+  const legH = LEGEND_ITEMS.length * 28 + 52
+  return (
+    <g>
+      {/* panel bg */}
+      <rect x={PANEL_X} y={DIAGRAM_Y} width={T.PANEL_W} height={T.DIAGRAM_H}
+        fill={T.C.bgPanel}/>
+      <Div x1={PANEL_X} y1={DIAGRAM_Y} x2={PANEL_X} y2={DIAGRAM_Y+T.DIAGRAM_H}/>
 
-  // truncate long site name
-  const displayName = name.length > 28 ? name.slice(0,26).toUpperCase()+'…' : name.toUpperCase()
+      {/* LEGEND */}
+      <Card x={px} y={cy} w={pw} h={legH}/>
+      <SectionLabel x={px+T.S16} y={cy+T.S32}>LEGEND</SectionLabel>
+      {LEGEND_ITEMS.map(([sym,col,lbl],i) => (
+        <g key={i} transform={`translate(${px+T.S16},${cy+50+i*28})`}>
+          <text fontSize="18" fill={col} fontWeight="700"
+            fontFamily="'Inter',Arial,sans-serif">{sym}</text>
+          <Txt x={40} y={1} size={T.F.body} fill={T.C.textSecondary}>{lbl}</Txt>
+        </g>
+      ))}
+      {(cy += legH + T.S16) && null}
+
+      {/* HAZARDS */}
+      {hazards.length > 0 && (() => {
+        const h = hazards.length * 52 + 52
+        return (
+          <g>
+            <Card x={px} y={cy} w={pw} h={h} fill={T.C.bgRed} stroke={T.C.red}/>
+            <SectionLabel x={px+T.S16} y={cy+T.S32}>SITE HAZARDS</SectionLabel>
+            {hazards.map((hz,i) => (
+              <g key={i} transform={`translate(${px+T.S16},${cy+50+i*52})`}>
+                <polygon points="14,12 22,-10 30,12" fill="none"
+                  stroke={T.C.red} strokeWidth="2" strokeLinejoin="round"/>
+                <Txt x={14} y={6} size={10} fill={T.C.red} weight="800" anchor="middle">!</Txt>
+                <Txt x={44} y={6} size={T.F.body} fill="#f47070" weight="500">
+                  {hz.length>30?hz.slice(0,29)+'…':hz}
+                </Txt>
+              </g>
+            ))}
+            {(cy += h + T.S16) && null}
+          </g>
+        )
+      })()}
+
+      {/* WAYPOINTS */}
+      {(() => {
+        const h = waypoints.length * 46 + 52
+        return (
+          <g>
+            <Card x={px} y={cy} w={pw} h={h}/>
+            <SectionLabel x={px+T.S16} y={cy+T.S32}>ROUTE WAYPOINTS</SectionLabel>
+            {waypoints.map((lbl,i) => (
+              <g key={i} transform={`translate(${px+T.S16},${cy+50+i*46})`}>
+                <circle cx={16} cy={-8} r={16}
+                  fill={i===waypoints.length-1?T.C.green:T.C.bg}
+                  stroke={T.C.textPrimary} strokeWidth="2.5"/>
+                <Txt x={16} y={-2} size={13} fill={T.C.textPrimary} weight="800" anchor="middle">{i+1}</Txt>
+                <Txt x={44} y={-2} size={T.F.body} fill={T.C.textSecondary}>{lbl}</Txt>
+              </g>
+            ))}
+            {(cy += h + T.S16) && null}
+          </g>
+        )
+      })()}
+
+      {/* RATING */}
+      {(() => {
+        const ry = DIAGRAM_Y + T.DIAGRAM_H - 172
+        return (
+          <g>
+            <Card x={px} y={ry} w={pw} h={152}/>
+            <SectionLabel x={px+T.S16} y={ry+T.S32}>SITE RATING</SectionLabel>
+            <Txt x={px+T.S16} y={ry+100} size={54} fill={T.C.yellow} weight="900">
+              ★ {site.rating}
+            </Txt>
+            <Txt x={px+T.S16} y={ry+128} size={T.F.body} fill={T.C.textSecondary}>
+              {site.reviews} verified diver reviews
+            </Txt>
+          </g>
+        )
+      })()}
+    </g>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  9. MAIN RENDERER
+// ─────────────────────────────────────────────────────────────────────────
+
+export default function DiveBriefingCard({ site }: { site: DiveSite }) {
+  const { maxDepth:md, minDepth, visibility, temp, difficulty, minCert,
+          bestTime, bestSeason, type, access, current, name, area,
+          marineLife, safetyNotes, rank, rating } = site
+
+  const id       = site.slug.replace(/[^a-z0-9]/g, '-')
+  const isBoat   = access === 'Boat'
+  const hasStr   = /strong|very/i.test(current)
+  const curStr   = hasStr ? 'strong' : /mild|weak/i.test(current) ? 'weak' : 'moderate'
+  const dispName = name.length > 30 ? name.slice(0,28).toUpperCase() + '…' : name.toUpperCase()
+
+  const routePts  = getRoutePoints(site)
+  const mlPos     = getMLPositions(site)
+  const ml        = marineLife.slice(0, 5)
+  const hazards   = safetyNotes.slice(0, 3)
+  const waypoints = buildWaypoints(site)
+  const timeline  = buildTimeline(site)
+  const tips      = buildTips(site)
+
+  // Info card data — uses only site data, no invented values
+  const infoCards: [string,string,string][] = [
+    ['DIVE TYPE',    type,                    ''],
+    ['DIFFICULTY',   difficulty,              ''],
+    ['CERTIFICATION',minCert,                 ''],
+    ['ACCESS',       access,                  ''],
+    ['DEPTH',        `${minDepth}–${md}m`,    'depth range'],
+    ['VISIBILITY',   visibility,              ''],
+    ['WATER TEMP',   temp,                    ''],
+    ['BEST TIME',    bestTime,                bestSeason],
+  ]
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg"
+    <svg viewBox={`0 0 ${T.W} ${T.H}`} xmlns="http://www.w3.org/2000/svg"
       style={{width:'100%',height:'auto',display:'block',borderRadius:14,
-              fontFamily:"'Inter','Helvetica Neue',Arial,sans-serif"}}>
+              fontFamily:"'Inter','Helvetica Neue',system-ui,Arial,sans-serif"}}>
 
       <defs>
+        {/* Sky gradient */}
         <linearGradient id={`sky-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={C.sky0}/>
-          <stop offset="100%" stopColor={C.sky1}/>
+          <stop offset="0%"  stopColor={T.C.sky0}/>
+          <stop offset="100%" stopColor={T.C.sky1}/>
         </linearGradient>
+        {/* Water gradient — darkens with depth */}
         <linearGradient id={`sea-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={C.sea0} stopOpacity="0.65"/>
-          <stop offset="45%"  stopColor={C.sea1} stopOpacity="0.88"/>
-          <stop offset="100%" stopColor={C.sea2} stopOpacity="1"/>
+          <stop offset="0%"   stopColor={T.C.water0} stopOpacity="0.68"/>
+          <stop offset="40%"  stopColor={T.C.water1} stopOpacity="0.88"/>
+          <stop offset="100%" stopColor={T.C.water2} stopOpacity="1.00"/>
         </linearGradient>
+        {/* Header gradient */}
         <linearGradient id={`hdr-${id}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stopColor="#071828"/>
-          <stop offset="100%" stopColor="#030f1c"/>
-        </linearGradient>
-        <linearGradient id={`dgm-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={C.bgPanel}/>
-          <stop offset="100%" stopColor={C.bg}/>
+          <stop offset="0%"   stopColor="#071a2c"/>
+          <stop offset="100%" stopColor="#030e1c"/>
         </linearGradient>
       </defs>
 
-      {/* ── BASE ── */}
-      <rect width={W} height={H} fill={C.bg} rx="14"/>
+      {/* ══════════════════════════════════════════════════════════════
+          BASE
+      ══════════════════════════════════════════════════════════════ */}
+      <rect width={T.W} height={T.H} fill={T.C.bg} rx="14"/>
 
-      {/* ━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <rect x="0" y={HDR_Y} width={W} height={HDR_H} fill={`url(#hdr-${id})`} rx="14"/>
-      <rect x="0" y={HDR_H-14} width={W} height="14" fill={`url(#hdr-${id})`}/>
-      <line x1="0" y1={HDR_H} x2={W} y2={HDR_H} stroke={C.grey3} strokeWidth="1.5"/>
+      {/* ══════════════════════════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════════════════════════ */}
+      <rect x="0" y={HEADER_Y} width={T.W} height={T.HEADER_H}
+        fill={`url(#hdr-${id})`} rx="14"/>
+      {/* bottom fill to square off rx */}
+      <rect x="0" y={T.HEADER_H - 14} width={T.W} height="14" fill="#030e1c"/>
+      <Div x1={0} y1={T.HEADER_H} x2={T.W} y2={T.HEADER_H}/>
 
-      {/* DIVE BRIEFING label */}
-      <T x="44" y="48" size="17" fill={C.orange} weight="800" spacing="3">DIVE BRIEFING</T>
+      {/* DIVE BRIEFING eyebrow */}
+      <Txt x={T.S48} y={46} size={T.F.label} fill={T.C.orange} weight="800" spacing="3">
+        DIVE BRIEFING
+      </Txt>
+      {/* Site name */}
+      <Txt x={T.S48} y={106} size={T.F.hero} fill={T.C.textPrimary} weight="900" spacing="-1">
+        {dispName}
+      </Txt>
+      {/* Breadcrumb */}
+      <Txt x={T.S48 + 2} y={140} size={T.F.bodyLg} fill={T.C.textSecondary} spacing="0.3">
+        {area}  ·  Indonesia
+      </Txt>
 
-      {/* site name — large */}
-      <T x="44" y="108" size="54" fill={C.white} weight="900" spacing="-1">{displayName}</T>
+      {/* Rank badge */}
+      <Badge x={T.W - 560} y={30} w={186} fill={T.C.bgCard} stroke={T.C.textMuted}>
+        <Txt x={T.W - 560 + 93} y={62} size={T.F.ui} fill={T.C.blue}
+          weight="700" anchor="middle">#{rank} in {area}</Txt>
+      </Badge>
 
-      {/* breadcrumb */}
-      <T x="46" y="140" size="20" fill={C.grey1} spacing="0.3">📍 {area}  ·  Indonesia</T>
+      {/* Verified badge */}
+      <Badge x={T.W - 362} y={30} w={310} fill={T.C.bgGreen} stroke={T.C.green}>
+        <Txt x={T.W - 362 + 22} y={62} size={T.F.ui} fill={T.C.green} weight="700">
+          ✓  Verified by local experts
+        </Txt>
+      </Badge>
 
-      {/* rank badge */}
-      <rect x={W-580} y="30" width="196" height="48" rx="24" fill={C.bgCard} stroke={C.grey2} strokeWidth="1.5"/>
-      <T x={W-482} y="62" size="19" fill={C.blue} weight="700" anchor="middle">#{rank} in {area}</T>
+      {/* Compass */}
+      <Compass cx={T.W - 62} cy={T.HEADER_H / 2 + 8} r={48}/>
 
-      {/* verified badge */}
-      <rect x={W-374} y="30" width="330" height="48" rx="24" fill={C.greenBg} stroke={C.green} strokeWidth="1.5"/>
-      <T x={W-366} y="62" size="19" fill={C.green} weight="700">✓  Verified by local experts</T>
+      {/* ══════════════════════════════════════════════════════════════
+          DIAGRAM
+      ══════════════════════════════════════════════════════════════ */}
 
-      {/* compass */}
-      <IconCompass x={W-62} y={HDR_H/2+6}/>
+      {/* Sky band */}
+      <rect x="0" y={DIAGRAM_Y} width={PANEL_X} height={T.SKY_H}
+        fill={`url(#sky-${id})`}/>
 
-      {/* ━━━ DIAGRAM ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* Water */}
+      <rect x="0" y={SURFACE_Y} width={PANEL_X} height={DIAGRAM_Y+T.DIAGRAM_H-SURFACE_Y}
+        fill={`url(#sea-${id})`}/>
 
-      {/* sky band */}
-      <rect x="0" y={DGM_Y} width={LP} height={SKY_H} fill={`url(#sky-${id})`}/>
-
-      {/* water */}
-      <rect x="0" y={SY} width={LP} height={DGM_Y+DGM_H-SY} fill={`url(#sea-${id})`}/>
-
-      {/* BOAT or SHORE */}
+      {/* Entry — boat or shore */}
       {isBoat ? (
         <g>
-          <IconBoat x={340} y={SY-54}/>
-          <T x="258" y={SY-122} size="18" fill={C.grey1} weight="700" spacing="1.5">BOAT DROP</T>
-          <line x1="340" y1={SY-14} x2="310" y2={SY+2}
-            stroke={C.grey1} strokeWidth="2.5" strokeDasharray="5,4" opacity="0.65"/>
-          <IconBoat x={1000} y={SY-54}/>
-          <T x="916" y={SY-122} size="18" fill={C.grey1} weight="700" spacing="1.5">PICK UP</T>
+          <BoatIcon x={320} y={SURFACE_Y - 58} label="BOAT DROP"/>
+          <BoatIcon x={960} y={SURFACE_Y - 58} label="PICK UP"/>
         </g>
       ) : (
-        <g>
-          {/* land */}
-          <path d={`M0 ${DGM_Y+10} L0 ${SY-30}
-                    Q70 ${SY-44} 140 ${SY-24} Q190 ${SY-10} 240 ${SY}
-                    L0 ${SY} Z`} fill="#3d6e36"/>
-          {/* beach */}
-          <path d={`M0 ${SY-8} Q90 ${SY-18} 180 ${SY-6} Q210 ${SY-2} 244 ${SY}`}
-            fill="#c8a460"/>
-          <T x="100" y={SY-52} size="18" fill={C.grey1} weight="700" anchor="middle" spacing="1.5">SHORE ENTRY</T>
-        </g>
+        <ShoreEntry entry={access}/>
       )}
 
-      {/* surface line */}
-      <line x1="0" y1={SY} x2={LP} y2={SY}
-        stroke="#7dd3fc" strokeWidth="2" strokeDasharray="14,8" opacity="0.55"/>
-      <T x="16" y={SY-10} size="16" fill={C.grey1} weight="600" spacing="1">SURFACE  0m</T>
+      {/* Surface line */}
+      <SurfaceLine/>
 
-      {/* depth markers */}
-      {dMarks.map(d => {
-        const y = dY(d,md)
-        if (y > BY+8) return null
-        const isMax = d===md
-        return (
-          <g key={d}>
-            <line x1="58" y1={y} x2={LP-4} y2={y}
-              stroke={isMax?C.red:C.grey3}
-              strokeWidth={isMax?2.2:0.8}
-              strokeDasharray={isMax?'9,4':'3,12'}
-              opacity={isMax?0.98:0.65}/>
-            <T x="50" y={y+6} size="16" fill={isMax?C.red:'#4a9cda'} weight={isMax?'800':'400'} anchor="end">{d}m</T>
-            {isMax && (
-              <g>
-                <rect x="62" y={y-28} width="218" height="32" rx="6" fill={C.redBg} opacity="0.9"/>
-                <T x="74" y={y-7} size="16" fill={C.red} weight="800">MAX DEPTH  {d}m</T>
-              </g>
-            )}
-          </g>
-        )
-      })}
+      {/* Depth scale */}
+      <DepthScale maxDepth={md}/>
 
-      {/* terrain */}
+      {/* Terrain template */}
       <Terrain site={site}/>
 
-      {/* route */}
-      <Route site={site}/>
+      {/* Dive route */}
+      <DiveRouteLine pts={routePts} total={routePts.length}/>
 
-      {/* current */}
-      <CurrentArrows x={isBoat?560:400} y={SY+52} strength={curStr as 'weak'|'moderate'|'strong'}/>
+      {/* Current indicator */}
+      <Current
+        x={isBoat ? DRAW_W * 0.36 + T.DEPTH_GUTTER : DRAW_W * 0.28 + T.DEPTH_GUTTER}
+        y={SURFACE_Y + 56}
+        strength={curStr as 'weak'|'moderate'|'strong'}/>
 
-      {/* marine life labels */}
-      {ml.map((m,i) => {
-        const [mx,my] = mlP[i] ?? mlP[mlP.length-1]
-        const d1 = Math.round(md*(0.14+i*0.16))
-        const d2 = Math.round(md*(0.28+i*0.16))
+      {/* Marine life tags — depth-accurate positions */}
+      {ml.map((m, i) => {
+        const [mx, my] = mlPos[i] ?? mlPos[mlPos.length-1]
+        const d1 = Math.round(md * (0.13 + i * 0.15))
+        const d2 = Math.round(md * (0.28 + i * 0.15))
         return <MLTag key={i} x={mx} y={my} name={m.name} depth={`${d1}–${d2}m`}/>
       })}
 
-      {/* hazard badges */}
-      {haz.map((h,i) => {
-        const hx = [220, 640, 980][i] ?? 220
-        const hy = BY - 30 - i*54
-        return <HazardTag key={i} x={hx} y={hy} text={h}/>
+      {/* Hazard tags — bottom of diagram */}
+      {hazards.map((h, i) => {
+        const hx = [T.DEPTH_GUTTER + 200, T.DEPTH_GUTTER + 600, T.DEPTH_GUTTER + 1000][i]
+        return <HazardTag key={i} x={hx} y={SEABED_Y - 28 - i * 52} text={h}/>
       })}
 
-      {/* diagram divider */}
-      <line x1="0" y1={DGM_Y+DGM_H} x2={LP} y2={DGM_Y+DGM_H} stroke={C.grey3} strokeWidth="1.5"/>
+      {/* Diagram bottom line */}
+      <Div x1={0} y1={DIAGRAM_Y+T.DIAGRAM_H} x2={PANEL_X} y2={DIAGRAM_Y+T.DIAGRAM_H}/>
 
-      {/* ── RIGHT LEGEND PANEL ─────────────────────────────────────────── */}
-      <rect x={LP} y={DGM_Y} width={LW} height={DGM_H} fill={C.bgPanel}/>
-      <line x1={LP} y1={DGM_Y} x2={LP} y2={DGM_Y+DGM_H} stroke={C.grey3} strokeWidth="1.5"/>
+      {/* Right panel */}
+      <RightPanel site={site} hazards={hazards} waypoints={waypoints}/>
 
-      {/* LEGEND card */}
-      <rect x={LP+22} y={DGM_Y+22} width={LW-44} height="296" rx="10"
-        fill={C.bgCard} stroke={C.grey3} strokeWidth="1"/>
-      <T x={LP+40} y={DGM_Y+52} size="14" fill={C.grey1} weight="800" spacing="2.5">LEGEND</T>
-      {([
-        ['━ ━',C.white,  'Entry / Descent'],
-        ['╌ ╌',C.white,  'Route'],
-        ['●',  C.green,  'Safety Stop'],
-        ['▲',  C.blue,   'Pick Up / Exit'],
-        ['▶',  C.teal,   'Current Direction'],
-        ['█',  C.yellow, 'Marine Life'],
-        ['▲',  C.red,    'Hazard'],
-        ['📷', C.orange, 'Photo Opportunity'],
-      ] as [string,string,string][]).map(([sym,col,lbl],i) => (
-        <g key={i} transform={`translate(${LP+40},${DGM_Y+70+i*28})`}>
-          <text x="0" y="0" fontSize="19" fill={col} fontWeight="700"
-            fontFamily="'Inter',Arial,sans-serif">{sym}</text>
-          <text x="46" y="1" fontSize="15" fill={C.offWhite}
-            fontFamily="'Inter',Arial,sans-serif">{lbl}</text>
-        </g>
-      ))}
+      {/* ══════════════════════════════════════════════════════════════
+          QUICK INFO CARDS
+      ══════════════════════════════════════════════════════════════ */}
+      <rect x="0" y={CARDS_Y} width={T.W} height={T.CARDS_H} fill={T.C.bgDark}/>
+      <Div x1={0} y1={CARDS_Y} x2={T.W} y2={CARDS_Y}/>
 
-      {/* SITE HAZARDS card */}
-      <rect x={LP+22} y={DGM_Y+338} width={LW-44} height={haz.length*54+52} rx="10"
-        fill={C.redBg} stroke={C.red} strokeWidth="1.5" opacity="0.9"/>
-      <T x={LP+40} y={DGM_Y+368} size="14" fill={C.red} weight="800" spacing="2.5">SITE HAZARDS</T>
-      {haz.map((h,i) => (
-        <g key={i} transform={`translate(${LP+40},${DGM_Y+392+i*54})`}>
-          <polygon points="14,0 22,-24 30,0" fill="none" stroke={C.red} strokeWidth="2" strokeLinejoin="round"/>
-          <text x="22" y="-7" fontSize="13" fill={C.red} textAnchor="middle" fontWeight="800"
-            fontFamily="'Inter',Arial,sans-serif">!</text>
-          <text x="44" y="-4" fontSize="14" fill="#f87171"
-            fontFamily="'Inter',Arial,sans-serif">
-            {h.length>32?h.slice(0,31)+'…':h}
-          </text>
-        </g>
-      ))}
-
-      {/* WAYPOINTS card */}
-      {(()=>{
-        const wy = DGM_Y+338+haz.length*54+62
+      {infoCards.map(([label, value, sub], i) => {
+        const cw = T.W / 8
+        const cx = i * cw
         return (
-          <g>
-            <rect x={LP+22} y={wy} width={LW-44} height={wpts.length*48+52} rx="10"
-              fill={C.bgCard} stroke={C.grey3} strokeWidth="1"/>
-            <T x={LP+40} y={wy+30} size="14" fill={C.grey1} weight="800" spacing="2.5">ROUTE WAYPOINTS</T>
-            {wpts.map((lbl,i) => (
-              <g key={i} transform={`translate(${LP+40},${wy+54+i*48})`}>
-                <circle cx="16" cy="-10" r="16"
-                  fill={i===wpts.length-1?C.green:C.bg} stroke={C.white} strokeWidth="2.5"/>
-                <text x="16" y="-4" fontSize="14" fill={C.white} textAnchor="middle" fontWeight="800"
-                  fontFamily="'Inter',Arial,sans-serif">{i+1}</text>
-                <text x="44" y="-4" fontSize="14" fill={C.offWhite}
-                  fontFamily="'Inter',Arial,sans-serif">{lbl}</text>
-              </g>
-            ))}
-          </g>
-        )
-      })()}
-
-      {/* SITE RATING card */}
-      {(()=>{
-        const ry = DGM_Y+DGM_H-192
-        return (
-          <g>
-            <rect x={LP+22} y={ry} width={LW-44} height="170" rx="10"
-              fill={C.bgCard} stroke={C.grey3} strokeWidth="1"/>
-            <T x={LP+40} y={ry+32} size="14" fill={C.grey1} weight="800" spacing="2.5">SITE RATING</T>
-            <T x={LP+40} y={ry+100} size="58" fill={C.yellow} weight="900">★ {rating}</T>
-            <T x={LP+40} y={ry+132} size="15" fill={C.grey1}>{reviews} verified diver reviews</T>
-            <T x={LP+40} y={ry+156} size="13" fill={C.grey2}>🔒 Admin verified · Dive Spots</T>
-          </g>
-        )
-      })()}
-
-      {/* ━━━ INFO CARDS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <rect x="0" y={INF_Y} width={W} height={INF_H} fill={C.bgDark}/>
-      <line x1="0" y1={INF_Y} x2={W} y2={INF_Y} stroke={C.grey3} strokeWidth="1.5"/>
-      {([
-        ['DIVE TYPE',     type,       ''],
-        ['DIFFICULTY',    difficulty, ''],
-        ['CERTIFICATION', minCert,    ''],
-        ['ACCESS',        access,     ''],
-        ['DEPTH RANGE',   `${minDepth}–${md}m`, ''],
-        ['VISIBILITY',    visibility, ''],
-        ['WATER TEMP',    temp,       ''],
-        ['BEST TIME',     bestTime,   bestSeason],
-      ] as [string,string,string][]).map(([k,v,sub],i) => {
-        const cw = W/8, cx = i*cw
-        return (
-          <g key={k}>
-            {i>0 && <line x1={cx} y1={INF_Y+16} x2={cx} y2={INF_Y+INF_H-16} stroke={C.grey3} strokeWidth="1" opacity="0.6"/>}
-            <T x={cx+cw/2} y={INF_Y+34} size="13" fill={C.grey1} weight="700" anchor="middle" spacing="0.8">{k}</T>
-            <T x={cx+cw/2} y={INF_Y+92} size="22" fill={C.white} weight="800" anchor="middle">{v}</T>
-            {sub && <T x={cx+cw/2} y={INF_Y+118} size="12" fill={C.grey2} anchor="middle">{sub}</T>}
-          </g>
-        )
-      })}
-
-      {/* ━━━ TIMELINE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <rect x="0" y={TML_Y} width={W} height={TML_H} fill={C.bgPanel}/>
-      <line x1="0" y1={TML_Y} x2={W} y2={TML_Y} stroke={C.grey3} strokeWidth="1.5"/>
-      <T x="44" y={TML_Y+42} size="16" fill={C.blue} weight="800" spacing="2">
-        DIVE TIMELINE  ·  APPROX. 45–55 MINUTES
-      </T>
-
-      {tl.map((s,i) => {
-        const cw = (W-88)/tl.length, cx = 44+i*cw
-        const isLast = i===tl.length-1
-        return (
-          <g key={i}>
-            <rect x={cx} y={TML_Y+56} width={cw-12} height={TML_H-70} rx="8"
-              fill={isLast?C.greenBg:C.bgCard}
-              stroke={isLast?C.green:C.grey3} strokeWidth="1"/>
-            <T x={cx+(cw-12)/2} y={TML_Y+84} size="13" fill={isLast?C.green:C.blue}
-              weight="700" anchor="middle" spacing="0.5">{s.time}</T>
-            <T x={cx+(cw-12)/2} y={TML_Y+120} size="17" fill={C.white}
-              weight="900" anchor="middle">{s.phase}</T>
-            <T x={cx+(cw-12)/2} y={TML_Y+148} size="12" fill={C.grey1}
-              anchor="middle">{s.sub}</T>
-            {i<tl.length-1 && (
-              <text x={cx+cw-2} y={TML_Y+126} fontSize="26" fill={C.grey2}
-                textAnchor="middle" fontFamily="'Inter',Arial,sans-serif">›</text>
+          <g key={label}>
+            {i > 0 && <Div x1={cx} y1={CARDS_Y+16} x2={cx} y2={CARDS_Y+T.CARDS_H-16}/>}
+            <Txt x={cx + cw/2} y={CARDS_Y + 36} size={T.F.label}
+              fill={T.C.textSecondary} weight="700" anchor="middle" spacing="1">
+              {label}
+            </Txt>
+            <Txt x={cx + cw/2} y={CARDS_Y + 92} size={22}
+              fill={T.C.textPrimary} weight="800" anchor="middle">
+              {value}
+            </Txt>
+            {sub && (
+              <Txt x={cx + cw/2} y={CARDS_Y + 116} size={T.F.caption}
+                fill={T.C.textMuted} anchor="middle">{sub}</Txt>
             )}
           </g>
         )
       })}
 
-      {/* ━━━ SAFETY TIPS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <rect x="0" y={TIP_Y} width={W} height={TIP_H} fill={C.bg}/>
-      <line x1="0" y1={TIP_Y} x2={W} y2={TIP_Y} stroke={C.grey3} strokeWidth="1.5"/>
-      <T x="44" y={TIP_Y+42} size="16" fill={C.grey1} weight="800" spacing="2">
-        DIVE TIPS  ·  SAFETY REMINDERS
-      </T>
+      {/* ══════════════════════════════════════════════════════════════
+          TIMELINE
+      ══════════════════════════════════════════════════════════════ */}
+      <rect x="0" y={TIMELINE_Y} width={T.W} height={T.TIMELINE_H} fill={T.C.bgPanel}/>
+      <Div x1={0} y1={TIMELINE_Y} x2={T.W} y2={TIMELINE_Y}/>
 
-      {tips.map((tip,i) => {
-        const cw = W/tips.length, cx = i*cw
-        const maxTextW = cw - 56
+      <SectionLabel x={T.S48} y={TIMELINE_Y + 40}>
+        DIVE TIMELINE  ·  APPROX. 45–55 MINUTES
+      </SectionLabel>
+
+      {timeline.map((step, i) => {
+        const cw  = (T.W - T.S48 * 2) / timeline.length
+        const cx  = T.S48 + i * cw
+        const isExit = i === timeline.length - 1
         return (
           <g key={i}>
-            {i>0 && <line x1={cx} y1={TIP_Y+20} x2={cx} y2={TIP_Y+TIP_H-20}
-              stroke={C.grey3} strokeWidth="1" opacity="0.45"/>}
-            {/* icon circle */}
-            <circle cx={cx+40} cy={TIP_Y+96} r="30" fill={C.bgCard} stroke={C.grey3} strokeWidth="1.5"/>
-            <text x={cx+40} y={TIP_Y+106} fontSize="26" textAnchor="middle"
-              fontFamily="'Inter',Arial,sans-serif">{tip.icon}</text>
-            {/* label */}
-            <T x={cx+82} y={TIP_Y+86} size="14" fill={C.blue} weight="800" spacing="0.5">{tip.label}</T>
-            {/* text — SVG tspan wrap */}
-            <TWrap x={cx+18} y={TIP_Y+120} size="14" fill={C.grey1}
-              maxW={maxTextW} lineH={20}>{tip.text}</TWrap>
+            <Card x={cx} y={TIMELINE_Y + 56} w={cw - 10} h={T.TIMELINE_H - 72}
+              fill={isExit ? T.C.bgGreen : T.C.bgCard}
+              stroke={isExit ? T.C.green : T.C.textDivider}/>
+            <Txt x={cx + (cw-10)/2} y={TIMELINE_Y + 84} size={T.F.caption}
+              fill={isExit ? T.C.green : T.C.blue}
+              weight="700" anchor="middle" spacing="0.5">{step.time}</Txt>
+            <Txt x={cx + (cw-10)/2} y={TIMELINE_Y + 120} size={T.F.subhead}
+              fill={T.C.textPrimary} weight="900" anchor="middle">{step.phase}</Txt>
+            <Txt x={cx + (cw-10)/2} y={TIMELINE_Y + 150} size={T.F.caption}
+              fill={T.C.textSecondary} anchor="middle">{step.sub}</Txt>
+            {i < timeline.length - 1 && (
+              <Txt x={cx + cw - 2} y={TIMELINE_Y + 126} size={28}
+                fill={T.C.textMuted} anchor="middle">›</Txt>
+            )}
           </g>
         )
       })}
 
-      {/* ━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <rect x="0" y={FTR_Y} width={W} height={FTR_H} fill={C.bgDark} rx="0"/>
-      <line x1="0" y1={FTR_Y} x2={W} y2={FTR_Y} stroke={C.grey3} strokeWidth="1.5"/>
-      <T x="44" y={FTR_Y+38} size="16" fill={C.grey2}>dive-spots.com</T>
-      <T x={W/2} y={FTR_Y+38} size="15" fill={C.grey2} anchor="middle">
+      {/* ══════════════════════════════════════════════════════════════
+          TIPS & SAFETY REMINDERS
+      ══════════════════════════════════════════════════════════════ */}
+      <rect x="0" y={TIPS_Y} width={T.W} height={T.TIPS_H} fill={T.C.bg}/>
+      <Div x1={0} y1={TIPS_Y} x2={T.W} y2={TIPS_Y}/>
+      <SectionLabel x={T.S48} y={TIPS_Y + 40}>DIVE TIPS  ·  SAFETY REMINDERS</SectionLabel>
+
+      {tips.map((tip, i) => {
+        const cw = T.W / tips.length
+        const cx = i * cw
+        const maxCharsPerLine = Math.floor((cw - 56) / (T.F.body * 0.58))
+        // Build text lines manually (no foreignObject)
+        const words = tip.text.split(' ')
+        const lines: string[] = []
+        let cur = ''
+        for (const w of words) {
+          if ((cur + ' ' + w).trim().length > maxCharsPerLine && cur) {
+            lines.push(cur.trim()); cur = w
+          } else {
+            cur = (cur + ' ' + w).trim()
+          }
+        }
+        if (cur) lines.push(cur)
+
+        return (
+          <g key={i}>
+            {i > 0 && <Div x1={cx} y1={TIPS_Y+20} x2={cx} y2={TIPS_Y+T.TIPS_H-20}/>}
+            {/* icon circle */}
+            <circle cx={cx + 44} cy={TIPS_Y + 102} r={34}
+              fill={T.C.bgCard} stroke={T.C.textDivider} strokeWidth="1.5"/>
+            <text x={cx+44} y={TIPS_Y+116} fontSize="30" textAnchor="middle"
+              fontFamily="'Inter',Arial,sans-serif">{tip.icon}</text>
+            {/* label */}
+            <Txt x={cx+90} y={TIPS_Y+94} size={T.F.body} fill={T.C.blue}
+              weight="800" spacing="0.8">{tip.label}</Txt>
+            {/* text lines */}
+            {lines.map((line, li) => (
+              <Txt key={li} x={cx+22} y={TIPS_Y+128+li*22} size={T.F.body} fill={T.C.textSecondary}>
+                {line}
+              </Txt>
+            ))}
+          </g>
+        )
+      })}
+
+      {/* ══════════════════════════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════════════════════════ */}
+      <rect x="0" y={FOOTER_Y} width={T.W} height={T.FOOTER_H} fill={T.C.bgDark}/>
+      <Div x1={0} y1={FOOTER_Y} x2={T.W} y2={FOOTER_Y}/>
+      <Txt x={T.S48} y={FOOTER_Y + 36} size={T.F.body} fill={T.C.textMuted}>
+        dive-spots.com
+      </Txt>
+      <Txt x={T.W/2} y={FOOTER_Y+36} size={T.F.body} fill={T.C.textMuted} anchor="middle">
         Always follow your dive guide&apos;s briefing. Never dive beyond your certification level.
-      </T>
-      <T x={W-44} y={FTR_Y+38} size="15" fill={C.grey2} anchor="end">© 2026 Dive Spots</T>
+      </Txt>
+      <Txt x={T.W - T.S48} y={FOOTER_Y+36} size={T.F.body} fill={T.C.textMuted} anchor="end">
+        © 2026 Dive Spots
+      </Txt>
 
     </svg>
   )
