@@ -909,30 +909,32 @@ function classifyEntryExit(site: DiveSite, template: DiagramTemplate): EntryExit
   const nm   = name.toLowerCase()
   const isBoat = access === 'Boat'
 
+  // Muck dives always enter from shore/sand even when reached by boat
+  const isMuckDive = type === 'Muck' || template === 'muck'
+  const isJetty    = template === 'jetty'
+
   // Entry type
   let entryType: EntryExit['entryType'] = 'shore-sand'
-  if (isBoat) {
+  if (isBoat && !isMuckDive) {
     entryType = 'boat'
-  } else if (desc.includes('black') || desc.includes('volcanic') || desc.includes('pebble')) {
-    entryType = 'shore-black-sand'
-  } else if (nm.includes('pier') || nm.includes('jetty') || template === 'jetty') {
+  } else if (isJetty) {
     entryType = 'jetty'
+  } else if (desc.includes('black') || desc.includes('volcanic') || desc.includes('pebble') ||
+             desc.includes('black sand') || site.slug.includes('seraya') || site.slug.includes('lembeh')) {
+    entryType = 'shore-black-sand'
   } else if (desc.includes('sand') || desc.includes('sandy')) {
     entryType = 'shore-sand'
   } else {
     entryType = 'shore-pebble'
   }
 
-  // Exit type — drift & open-water pelagic sites exit by SMB, not back to entry
-  let exitType: EntryExit['exitType'] = isBoat ? 'boat-pickup' : 'shore-same'
-  if (template === 'drift' || type === 'Drift') {
+  // Exit type
+  // Muck and jetty: always return to shore
+  // Drift: exit by SMB
+  // Boat non-drift: pickup near entry
+  let exitType: EntryExit['exitType'] = isBoat && !isMuckDive ? 'boat-pickup' : 'shore-same'
+  if (template === 'drift') {
     exitType = isBoat ? 'smb-open-water' : 'shore-drift-end'
-  }
-  if (diagramType === 'boat' && !isBoat) {
-    // Shore-entry sites that are described as drift (e.g. wall dives that exit by SMB)
-    if (desc.includes('smb') || desc.includes('signal') || desc.includes('drift')) {
-      exitType = 'smb-open-water'
-    }
   }
 
   // Boat positions — drift sites: drop left, pickup right; circuit/reef: drop & pickup near entry
