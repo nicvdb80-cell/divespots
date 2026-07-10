@@ -138,14 +138,21 @@ function DepthScale({ max }:{max:number}) {
 }
 
 function CurrentViz({ x, y, strength }:{x:number;y:number;strength:'weak'|'moderate'|'strong'}) {
-  const cfg = {weak:{n:2,col:'#4a9ab8',label:'MILD CURRENT'},moderate:{n:3,col:C.teal,label:'CURRENT'},strong:{n:5,col:C.blue,label:'STRONG CURRENT'}}[strength]
+  const cfg = {
+    weak:     {n:2, col:'#4a9ab8', label:'MILD CURRENT',     dir:'West → East'},
+    moderate: {n:3, col:C.teal,   label:'CURRENT',           dir:'West → East'},
+    strong:   {n:5, col:C.blue,   label:'STRONG CURRENT',    dir:'West → East'},
+  }[strength]
+  const aw = 28  // arrow width
   return (
     <g>
+      {/* right-pointing filled chevron arrows */}
       {Array.from({length:cfg.n}).map((_,i)=>(
-        <polyline key={i} points={`${x+i*44-4},${y-13} ${x+i*44+14},${y} ${x+i*44-4},${y+13}`}
-          fill="none" stroke={cfg.col} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity={0.5+i*0.1}/>
+        <polygon key={i}
+          points={`${x+i*(aw+10)},${y-12} ${x+i*(aw+10)+aw},${y} ${x+i*(aw+10)},${y+12} ${x+i*(aw+10)+8},${y}`}
+          fill={cfg.col} opacity={0.5+i*0.1}/>
       ))}
-      <Tx x={x+cfg.n*44+14} y={y+5} sz={16} fill={cfg.col} w="600" ls="1.5">{cfg.label}</Tx>
+      <Tx x={x+cfg.n*(aw+10)+12} y={y+5} sz={16} fill={cfg.col} w="700" ls="1">{cfg.label}</Tx>
     </g>
   )
 }
@@ -161,11 +168,14 @@ function Wp({ x, y, n, ss=false }:{x:number;y:number;n:number;ss?:boolean}) {
 }
 
 function SSBadge({ x, y }:{x:number;y:number}) {
+  // Badge sits above the waypoint circle — 24px radius + 12px gap = start at y-36
   return (
     <g>
-      <rect x={x-98} y={y-58} width={196} height={46} rx={10} fill={C.green} opacity="0.97"/>
-      <Tx x={x} y={y-36} sz={15} fill={C.tex} w="800" a="middle" ls="0.5">SAFETY STOP</Tx>
-      <Tx x={x} y={y-18} sz={13} fill="rgba(255,255,255,0.72)" a="middle">5 metres  ·  3 minutes</Tx>
+      <rect x={x-100} y={y-98} width={200} height={48} rx={10} fill={C.green} opacity="0.97"/>
+      <Tx x={x} y={y-73} sz={15} fill={C.tex} w="800" a="middle" ls="0.5">SAFETY STOP</Tx>
+      <Tx x={x} y={y-55} sz={13} fill="rgba(255,255,255,0.72)" a="middle">5 metres  ·  3 minutes</Tx>
+      {/* connector line from badge to circle */}
+      <line x1={x} y1={y-50} x2={x} y2={y-26} stroke={C.green} strokeWidth="2" opacity="0.7"/>
     </g>
   )
 }
@@ -185,7 +195,7 @@ function HazardTag({ x, y, text }:{x:number;y:number;text:string}) {
 
 function MLTag({ x, y, name, depth }:{x:number;y:number;name:string;depth:string}) {
   const label=name.length>22?name.slice(0,21)+'…':name
-  const w=Math.max(label.length*10.4+24,150)
+  const w=Math.max(label.length*10.4+24,180)
   return (
     <g>
       <rect x={x} y={y} width={w} height={38} rx={6} fill="rgba(3,16,29,0.9)" stroke={C.yellow} strokeWidth="1.5"/>
@@ -532,36 +542,34 @@ function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?
 
   switch(template) {
     case 'wreck': {
-      // Shore wreck: entry left → bow → midship → stern (deepest) → ascend sand slope → SS near shore
-      // Boat wreck:  drop → bow → midship → stern → ascend → SS right side pickup
       const keel=dY(md*.73,md), deck=dY(md*.43,md)
-      const bow  = GL+220
-      const mid  = GL+440
-      const stern= GL+660
-      // Return: from stern, ascend sandy slope back toward entry side
-      const returnX = isBoat ? GL+DW*0.60 : GL+280
+      // Waypoints sit just above/on the wreck structure, clearly on the hull
+      const bowX   = GL+240
+      const midX   = GL+460
+      const sternX = GL+680
+      const deckY  = deck + 8   // just below deck level = on the wreck
+      const midY   = deck + (keel-deck)*0.45  // between deck and keel
+      const sternY = deck + (keel-deck)*0.72  // deeper — near keel at stern
+      const returnX= isBoat ? GL+DW*0.58 : GL+260
       return [
-        [entryX,        SY+24],        // 1 entry
-        [bow,           deck+14],       // 2 wreck bow
-        [mid,           (deck+keel)/2], // 3 midship
-        [stern,         keel-6],        // 4 stern / max depth
-        [returnX,       dY(8,md)],      // 5 ascent on sandy slope
-        [ssX,           ssY],           // 6 safety stop — near shore or pickup
+        [entryX,  SY+24],       // 1 entry (shore waterline or boat drop)
+        [bowX,    deckY],        // 2 bow — on deck
+        [midX,    midY],         // 3 midship engine room — mid hull
+        [sternX,  sternY],       // 4 stern propeller — deep
+        [returnX, dY(8,md)],     // 5 ascend sandy slope (between entry and stern)
+        [ssX,     ssY],          // 6 safety stop at 5m near shore/pickup
       ]
     }
     case 'wall': {
-      // Wall always descends on the wall (left side), ascends same wall
-      // Shore: SS back at wall top near entry
-      // Boat: SS in water column, SMB pickup
-      const wallX = GL+290
-      const deepX = GL+310
+      // Wall face is at x≈GL+196. Route descends along wall, ascends same wall.
+      const wallX = GL+260  // just in front of wall face
       return [
-        [entryX,  SY+24],           // 1 entry / descent
-        [wallX,   dY(md*.26,md)],   // 2 upper wall
-        [wallX+20,dY(md*.54,md)],   // 3 mid wall
-        [deepX,   dY(md*.85,md)],   // 4 max depth / turn
-        [wallX,   dY(md*.26,md)],   // 5 ascend back up wall
-        [ssX,     ssY],             // 6 safety stop
+        [entryX,   SY+24],           // 1 entry / descent at wall top
+        [wallX,    dY(md*.25,md)],   // 2 upper wall section
+        [wallX+24, dY(md*.52,md)],   // 3 mid wall
+        [wallX+36, dY(md*.84,md)],   // 4 max depth — turn point
+        [wallX,    dY(md*.25,md)],   // 5 ascend back up wall (same path)
+        [ssX,      ssY],             // 6 safety stop at wall top / pickup
       ]
     }
     case 'cleaning-station': {
@@ -612,15 +620,14 @@ function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?
         [GL+DW-40,     ssY],            // 6 SMB / surface pickup
       ]
     case 'muck': {
-      // Grid search out and BACK — return to near entry
-      const farX = isBoat ? GL+820 : GL+780
+      const farX = isBoat ? GL+800 : GL+760
       return [
-        [entryX,    SY+24],           // 1 entry
-        [GL+380,    dY(md*.30,md)],   // 2 zone 1
-        [GL+580,    dY(md*.52,md)],   // 3 zone 2
-        [farX,      dY(md*.70,md)],   // 4 deepest / turn
-        [GL+340,    dY(md*.32,md)],   // 5 return route
-        [ssX,       ssY],             // 6 safety stop near shore
+        [entryX,  SY+24],           // 1 entry
+        [GL+360,  dY(md*.28,md)],   // 2 zone 1
+        [GL+560,  dY(md*.50,md)],   // 3 zone 2
+        [farX,    dY(md*.70,md)],   // 4 deepest / turn
+        [GL+320,  dY(md*.30,md)],   // 5 return route — back toward entry
+        [ssX,     ssY],             // 6 safety stop near shore
       ]
     }
     case 'jetty': {
@@ -636,14 +643,15 @@ function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?
       ]
     }
     default: {
-      // Reef slope: descend → explore → deep point → RETURN up slope → SS near shore
+      // Reef slope: descend → explore → deep point → RETURN up slope → SS
+      // Return (5) must be clearly left of deep point (4) to show direction change
       return [
-        [entryX,     SY+24],           // 1 entry
-        [GL+320,     dY(md*.24,md)],   // 2 shallow reef
-        [GL+540,     dY(md*.52,md)],   // 3 main reef
-        [GL+780,     dY(md*.80,md)],   // 4 deep point / turn
-        [GL+360,     dY(md*.28,md)],   // 5 return up slope
-        [ssX,        ssY],             // 6 safety stop
+        [entryX,  SY+24],           // 1 entry
+        [GL+310,  dY(md*.22,md)],   // 2 shallow reef
+        [GL+530,  dY(md*.50,md)],   // 3 main reef
+        [GL+760,  dY(md*.78,md)],   // 4 deep point / turn
+        [GL+340,  dY(md*.25,md)],   // 5 return up slope (left = shallower)
+        [ssX,     ssY],             // 6 safety stop near shore
       ]
     }
   }
@@ -1084,11 +1092,11 @@ function ExitVisual({ ee, routeEndX, routeEndY }: { ee: EntryExit; routeEndX: nu
       <Terrain template={template} md={md}/>
       <DiveRoute pts={routePts}/>
       <ExitVisual ee={ee} routeEndX={lastPt[0]} routeEndY={lastPt[1]}/>
-      <CurrentViz x={isBoat?GL+DW*.36:GL+DW*.28} y={SY+58} strength={curStr as 'weak'|'moderate'|'strong'}/>
+      <CurrentViz x={GL+380} y={SY+54} strength={curStr as 'weak'|'moderate'|'strong'}/>
       {ml.map((m,i)=>{
         const [mx,my]=mlPos[i]??mlPos[mlPos.length-1]
         const d1=Math.round(md*(.13+i*.15)), d2=Math.round(md*(.28+i*.15))
-        return <MLTag key={i} x={mx} y={my} name={m.name} depth={`${d1}–${d2}m`}/>
+        return <MLTag key={i} x={mx} y={my} name={m.name} depth={`${d1}-${d2}m`}/>
       })}
       {hazards.map((h,i)=>{
         const hx=[GL+196,GL+598,GL+998][i]
