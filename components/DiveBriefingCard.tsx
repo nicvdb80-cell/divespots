@@ -515,21 +515,21 @@ function Terrain({ template, md }:{template:DiagramTemplate;md:number}) {
 
 // ── ROUTE SYSTEM ───────────────────────────────────────────────────────────
 
-// Exit marker — shown at the final surface point
+// Exit marker — shown at the final surface point (above waterline)
 function ExitMarker({ x, y, isBoat }:{x:number;y:number;isBoat:boolean}) {
+  const label = isBoat ? 'BOAT PICKUP' : 'SHORE EXIT'
   return (
     <g>
-      {/* Circle with arrow up */}
-      <circle cx={x} cy={y} r={28} fill={C.bgGn} stroke={C.green} strokeWidth="3"/>
+      {/* Green exit circle */}
+      <circle cx={x} cy={y} r={30} fill={C.bgGn} stroke={C.green} strokeWidth="4"/>
       {/* Up arrow */}
-      <line x1={x} y1={y+12} x2={x} y2={y-10} stroke={C.green} strokeWidth="3" strokeLinecap="round"/>
-      <polyline points={`${x-8},${y-4} ${x},${y-14} ${x+8},${y-4}`} fill="none" stroke={C.green} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* Label */}
-      <rect x={x-52} y={y-52} width={104} height={26} rx={6} fill={C.bgGn} opacity="0.95"/>
-      <text x={x} y={y-34} fontSize="14" fill={C.green} fontWeight="800" textAnchor="middle"
-        fontFamily="'Inter','Helvetica Neue',Arial,sans-serif" letterSpacing="0.5">
-        {isBoat ? 'BOAT PICKUP' : 'EXIT'}
-      </text>
+      <line x1={x} y1={y+13} x2={x} y2={y-11} stroke={C.green} strokeWidth="4" strokeLinecap="round"/>
+      <polyline points={`${x-9},${y-4} ${x},${y-15} ${x+9},${y-4}`}
+        fill="none" stroke={C.green} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Label below circle */}
+      <rect x={x-70} y={y+34} width={140} height={32} rx={8} fill={C.green}/>
+      <text x={x} y={y+55} fontSize="16" fill="#fff" fontWeight="900" textAnchor="middle"
+        fontFamily="'Inter','Helvetica Neue',Arial,sans-serif" letterSpacing="1">{label}</text>
     </g>
   )
 }
@@ -567,8 +567,8 @@ function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?
 
   // Exit x (waypoint 7) — at the surface, same x as safety stop
   // Shore: back at the beach (left edge)  Boat: at pickup boat  Drift: right side SMB
-  const exitX = isBoat ? ssX : GL+150
-  const exitY = SY + 18   // just below surface line — clearly visible
+  const exitX = isBoat ? ssX : GL+380
+  const exitY = SY - 52     // well above surface line, in the sky zone
 
   switch(template) {
     case 'wreck': {
