@@ -86,6 +86,8 @@ function CurrentArrows({ x, y, label }: { x:number; y:number; label:string }) {
 }
 
 // ─── terrain types ─────────────────────────────────────────────────────────
+
+// Large cargo/transport wreck (Liberty style) — long hull parallel to shore
 function WreckTerrain({ md }: { md: number }) {
   const wTop = dY(5, md), wBot = dY(md - 3, md)
   const wH = wBot - wTop
@@ -111,6 +113,126 @@ function WreckTerrain({ md }: { md: number }) {
       <text x="502" y={wTop-8} fontSize="8" fill="#60a5fa" fontWeight="700">STERN</text>
       <text x="320" y={wTop+wH*0.55} fontSize="14" fill="#475569" textAnchor="middle" fontWeight="800" opacity="0.5">W R E C K</text>
       {[60,72,84,96,108].map(cx => <ellipse key={cx} cx={cx} cy={SURFACE_Y+5} rx="6" ry="3" fill="#374151" opacity="0.7"/>)}
+    </g>
+  )
+}
+
+// Small compact wreck — WWII patrol boat / fishing vessel sitting upright on sandy slope
+function SmallWreckTerrain({ md }: { md: number }) {
+  const sandY  = dY(md - 1, md)          // sandy bottom
+  const hullY  = dY(md - 5, md)          // hull base sits here
+  const hullH  = sandY - hullY           // hull height ~4m worth
+  const hullW  = 180                     // compact — patrol boat
+  const hullX  = 240                     // centred in diagram
+
+  return (
+    <g>
+      {/* flat sandy bottom */}
+      <path d={`M55 ${sandY} L${PANEL_RIGHT-10} ${sandY-6} L${PANEL_RIGHT-10} ${BOTTOM_Y+12} L55 ${BOTTOM_Y+12} Z`}
+        fill="#78350f" opacity="0.38"/>
+      <text x="420" y={sandY+20} fontSize="8" fill="#b45309" textAnchor="middle">FLAT SANDY BOTTOM</text>
+
+      {/* sand ripples */}
+      {[130,200,280,360,450,540,620].map((cx,i) => (
+        <path key={i} d={`M${cx} ${sandY+4} Q${cx+18} ${sandY+1} ${cx+36} ${sandY+4}`}
+          stroke="#92400e" strokeWidth="0.8" fill="none" opacity="0.5"/>
+      ))}
+
+      {/* coral growth around wreck base */}
+      {[hullX-30, hullX+hullW+10, hullX+60, hullX+120].map((cx,i) => (
+        <g key={i}>
+          <ellipse cx={cx} cy={sandY} rx="14" ry="7" fill="#059669" opacity="0.55"/>
+          <path d={`M${cx} ${sandY-7} Q${cx-8} ${sandY-20} ${cx} ${sandY-14} Q${cx+8} ${sandY-20} ${cx} ${sandY-7}`}
+            fill="#10b981" opacity="0.7"/>
+        </g>
+      ))}
+
+      {/* HULL — upright, compact */}
+      {/* main hull body */}
+      <path d={`M${hullX} ${hullY+hullH} L${hullX} ${hullY+6} Q${hullX+8} ${hullY} ${hullX+20} ${hullY} L${hullX+hullW-20} ${hullY} Q${hullX+hullW} ${hullY} ${hullX+hullW} ${hullY+8} L${hullX+hullW} ${hullY+hullH} Z`}
+        fill="#1e293b" stroke="#334155" strokeWidth="2" opacity="0.94"/>
+
+      {/* deck line */}
+      <line x1={hullX} y1={hullY+10} x2={hullX+hullW} y2={hullY+10} stroke="#334155" strokeWidth="1" opacity="0.7"/>
+
+      {/* wheelhouse / bridge — small, off-centre */}
+      <rect x={hullX+35} y={hullY-28} width="60" height="30" rx="3" fill="#263244" stroke="#475569" strokeWidth="1.5"/>
+      {/* windows on wheelhouse */}
+      {[hullX+42, hullX+58, hullX+74].map(wx => (
+        <rect key={wx} x={wx} y={hullY-22} width="8" height="6" rx="1" fill="#0a1628" stroke="#475569" strokeWidth="0.8"/>
+      ))}
+
+      {/* gun mount suggestion on bow */}
+      <circle cx={hullX+22} cy={hullY+4} r="6" fill="#0f172a" stroke="#475569" strokeWidth="1"/>
+      <line x1={hullX+22} y1={hullY+4} x2={hullX+10} y2={hullY-8} stroke="#475569" strokeWidth="2"/>
+
+      {/* mast */}
+      <line x1={hullX+60} y1={hullY-28} x2={hullX+62} y2={hullY-70} stroke="#475569" strokeWidth="1.5"/>
+      <line x1={hullX+44} y1={hullY-52} x2={hullX+80} y2={hullY-52} stroke="#475569" strokeWidth="1"/>
+
+      {/* portholes — fewer, smaller */}
+      {[hullX+20, hullX+55, hullX+90, hullX+130, hullX+160].map((px,i) => (
+        <circle key={i} cx={px} cy={hullY+hullH*0.45} r="5" fill="#0a1628" stroke="#475569" strokeWidth="1.2"/>
+      ))}
+
+      {/* coral/encrustation on hull */}
+      {[hullX+10, hullX+80, hullX+150, hullX+170].map((cx,i) => (
+        <path key={i} d={`M${cx} ${hullY+hullH} Q${cx-5} ${hullY+hullH-12} ${cx} ${hullY+hullH-8} Q${cx+5} ${hullY+hullH-12} ${cx} ${hullY+hullH}`}
+          fill={i%2===0?'#10b981':'#0891b2'} opacity="0.6"/>
+      ))}
+
+      {/* glassfish swarm around wreck */}
+      {Array.from({length:18}).map((_,i) => {
+        const gx = hullX + 20 + (i*11)%160
+        const gy = hullY - 10 + (i*7)%40
+        return <ellipse key={i} cx={gx} cy={gy} rx="2" ry="1" fill="#e2e8f0" opacity="0.5"/>
+      })}
+      <text x={hullX+30} y={hullY-78} fontSize="7.5" fill="#94a3b8">GLASSFISH SCHOOL</text>
+
+      {/* labels */}
+      <text x={hullX+8} y={hullY-6} fontSize="8" fill="#60a5fa" fontWeight="700">BOW</text>
+      <text x={hullX+hullW-26} y={hullY-6} fontSize="8" fill="#60a5fa" fontWeight="700">STERN</text>
+      <text x={hullX+hullW/2} y={hullY+hullH*0.7} fontSize="10" fill="#475569" textAnchor="middle" fontWeight="800" opacity="0.6">PATROL BOAT</text>
+    </g>
+  )
+}
+
+function SmallWreckRoute({ md, shore }: { md: number; shore?: boolean }) {
+  const sandY  = dY(md - 1, md)
+  const hullY  = dY(md - 5, md)
+  const hullX  = 240
+  const hullW  = 180
+  const startX = shore ? 108 : 200
+  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
+  const y5     = dY(5, md)
+
+  return (
+    <g>
+      {/* 1 — entry */}
+      <path d={`M${startX} ${startY} Q${startX+20} ${y5+8} ${startX+40} ${hullY-30}`}
+        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
+
+      {/* 2 — descend to wreck top */}
+      <path d={`M${startX+40} ${hullY-30} Q${hullX+20} ${hullY-12} ${hullX+30} ${hullY+4}`}
+        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+10} y={hullY-6} n={2}/>
+
+      {/* 3 — along wreck bow to stern */}
+      <path d={`M${hullX+30} ${hullY+4} L${hullX+hullW-10} ${hullY+6}`}
+        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW/2} y={hullY+4} n={3}/>
+
+      {/* 4 — down to sandy bottom / under hull */}
+      <path d={`M${hullX+hullW-10} ${hullY+6} Q${hullX+hullW+20} ${sandY-10} ${hullX+hullW+40} ${sandY}`}
+        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW+20} y={sandY-4} n={4}/>
+
+      {/* 5 — ascend away from wreck, safety stop */}
+      <path d={`M${hullX+hullW+40} ${sandY} Q${hullX+hullW+80} ${dY(md*0.4,md)} ${hullX+hullW+100} ${y5}`}
+        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW+100} y={y5} n={5}/>
+      <SafetyStop x={hullX+hullW+112} y={y5-36}/>
     </g>
   )
 }
@@ -314,7 +436,8 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
   const step = md <= 20 ? 5 : md <= 40 ? 5 : 10
   for (let d = 0; d <= md; d += step) depthMarkers.push(d)
 
-  const isWreck    = diagramType === 'wreck'
+  const isWreck      = diagramType === 'wreck'
+  const isSmallWreck = diagramType === 'smallwreck'
   const isWall     = diagramType === 'wall'
   const isDrift    = type === 'Drift'
   const isPinnacle = name.toLowerCase().includes('magic') || name.toLowerCase().includes('pinnacle') || name.toLowerCase().includes('mount')
@@ -405,12 +528,13 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
       <text x={PANEL_RIGHT*0.63} y={dY(avgDepth,md)+4} fontSize="7.5" fill="#f59e0b">AVG {avgDepth}m</text>
 
       {/* ── TERRAIN ── */}
-      {isWreck    && <WreckTerrain md={md}/>}
+      {isWreck      && <WreckTerrain md={md}/>}
+      {isSmallWreck && <SmallWreckTerrain md={md}/>}
       {isWall     && <WallTerrain  md={md}/>}
       {isDrift    && <ReefSlopeTerrain md={md}/>}
       {isPinnacle && !isWreck && !isWall && <PinnacleTerrain md={md}/>}
       {isMuck     && <MuckTerrain  md={md}/>}
-      {!isWreck && !isWall && !isDrift && !isPinnacle && !isMuck && (
+      {!isWreck && !isSmallWreck && !isWall && !isDrift && !isPinnacle && !isMuck && (
         isBoat ? <BoatReefTerrain md={md}/> : <ReefSlopeTerrain md={md}/>
       )}
 
@@ -496,10 +620,11 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
       <Compass x={PANEL_RIGHT - 26} y={SURFACE_Y - 26}/>
 
       {/* ── ROUTES ── */}
-      {isWreck && <WreckRoute md={md} shore={!isBoat}/>}
+      {isWreck      && <WreckRoute      md={md} shore={!isBoat}/>}
+      {isSmallWreck && <SmallWreckRoute md={md} shore={!isBoat}/>}
       {isWall  && <WallRoute  md={md} shore={!isBoat}/>}
       {isDrift && <DriftRoute md={md}/>}
-      {!isWreck && !isWall && !isDrift && <ReefRoute md={md} shore={!isBoat}/>}
+      {!isWreck && !isSmallWreck && !isWall && !isDrift && <ReefRoute md={md} shore={!isBoat}/>}
 
       {/* ── MARINE LIFE TAGS ── */}
       {ml[0] && <MarineLifeTag x={isWall?(isBoat?170:185):(!isBoat?220:210)} y={dY(md*0.32,md)-32} name={ml[0].name} depthLabel={`~${Math.round(md*0.3)}m`}/>}
