@@ -209,55 +209,80 @@ function BoatReefTerrain({ md }: { md: number }) {
 }
 
 // ─── dive routes ────────────────────────────────────────────────────────────
-function WreckRoute({ md }: { md: number }) {
+function WreckRoute({ md, shore }: { md: number; shore?: boolean }) {
   const y5=dY(5,md), yMax=dY(md-4,md)
+  const startX = shore ? 108 : 160
+  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
   return (
     <g>
-      <path d={`M90 ${SURFACE_Y} Q105 ${y5-10} 125 ${y5+12}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={92} y={SURFACE_Y+8} n={1}/>
-      <path d={`M125 ${y5+12} Q235 ${y5-4} 340 ${y5+10}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={235} y={y5+8} n={2}/>
-      <path d={`M340 ${y5+10} Q410 ${dY(md*0.58,md)} 470 ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={400} y={dY(md*0.58,md)} n={3}/>
-      <WaypointCircle x={470} y={yMax} n={4}/>
-      <path d={`M470 ${yMax} Q510 ${dY(10,md)} 530 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={530} y={y5} n={5}/>
-      <SafetyStop x={548} y={y5-36}/>
+      <path d={`M${startX} ${startY} Q${startX+20} ${y5-6} ${startX+40} ${y5+14}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
+      <path d={`M${startX+40} ${y5+14} Q${startX+150} ${y5-2} ${startX+270} ${y5+12}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+150} y={y5+10} n={2}/>
+      <path d={`M${startX+270} ${y5+12} Q${startX+330} ${dY(md*0.58,md)} ${startX+380} ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+315} y={dY(md*0.56,md)} n={3}/>
+      <WaypointCircle x={startX+380} y={yMax} n={4}/>
+      <path d={`M${startX+380} ${yMax} Q${startX+420} ${dY(10,md)} ${startX+440} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+440} y={y5} n={5}/>
+      <SafetyStop x={startX+452} y={y5-36}/>
     </g>
   )
 }
 
-function WallRoute({ md }: { md: number }) {
+function WallRoute({ md, shore }: { md: number; shore?: boolean }) {
   const y5=dY(5,md), yMax=dY(md-4,md)
+  // wall dives: descend near the wall top, go deep, come back shallower
+  const startX = shore ? 108 : 280
+  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
   return (
     <g>
-      <path d={`M280 ${SURFACE_Y} Q250 ${y5} 220 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={280} y={SURFACE_Y+10} n={1}/>
-      <path d={`M220 ${dY(16,md)} Q195 ${dY(md*0.45,md)} 180 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={208} y={dY(md*0.38,md)} n={2}/>
-      <WaypointCircle x={182} y={yMax-18} n={3}/>
-      <path d={`M182 ${yMax-18} Q240 ${dY(md*0.38,md)} 390 ${dY(18,md)} Q460 ${y5+14} 520 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={380} y={dY(18,md)} n={4}/>
-      <WaypointCircle x={520} y={y5} n={5}/>
-      <SafetyStop x={538} y={y5-36}/>
+      {shore ? (
+        // shore wall: walk in, descend along wall face
+        <>
+          <path d={`M${startX} ${startY} Q118 ${y5+4} 125 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={startX+4} y={startY+12} n={1}/>
+          <path d={`M125 ${dY(16,md)} Q130 ${dY(md*0.45,md)} 138 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={130} y={dY(md*0.38,md)} n={2}/>
+          <WaypointCircle x={140} y={yMax-18} n={3}/>
+          <path d={`M140 ${yMax-18} Q220 ${dY(md*0.38,md)} 390 ${dY(18,md)} Q460 ${y5+14} 520 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={380} y={dY(18,md)} n={4}/>
+          <WaypointCircle x={520} y={y5} n={5}/>
+          <SafetyStop x={538} y={y5-36}/>
+        </>
+      ) : (
+        // boat wall: descend from water, go deep along wall
+        <>
+          <path d={`M280 ${SURFACE_Y} Q250 ${y5} 220 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={280} y={SURFACE_Y+10} n={1}/>
+          <path d={`M220 ${dY(16,md)} Q195 ${dY(md*0.45,md)} 180 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={208} y={dY(md*0.38,md)} n={2}/>
+          <WaypointCircle x={182} y={yMax-18} n={3}/>
+          <path d={`M182 ${yMax-18} Q240 ${dY(md*0.38,md)} 390 ${dY(18,md)} Q460 ${y5+14} 520 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+          <WaypointCircle x={380} y={dY(18,md)} n={4}/>
+          <WaypointCircle x={520} y={y5} n={5}/>
+          <SafetyStop x={538} y={y5-36}/>
+        </>
+      )}
     </g>
   )
 }
 
-function ReefRoute({ md }: { md: number }) {
+function ReefRoute({ md, shore }: { md: number; shore?: boolean }) {
   const y5=dY(5,md), yMax=dY(md*0.82,md)
+  const startX = shore ? 108 : 160
+  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
   return (
     <g>
-      <path d={`M140 ${SURFACE_Y} Q150 ${y5+8} 175 ${dY(md*0.28,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={142} y={SURFACE_Y+10} n={1}/>
-      <path d={`M175 ${dY(md*0.28,md)} Q265 ${dY(md*0.46,md)} 330 ${dY(md*0.54,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={255} y={dY(md*0.44,md)} n={2}/>
-      <path d={`M330 ${dY(md*0.54,md)} Q395 ${dY(md*0.7,md)} 445 ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={370} y={dY(md*0.66,md)} n={3}/>
-      <WaypointCircle x={445} y={yMax} n={4}/>
-      <path d={`M445 ${yMax} Q510 ${dY(md*0.28,md)} 540 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={540} y={y5} n={5}/>
-      <SafetyStop x={558} y={y5-36}/>
+      <path d={`M${startX} ${startY} Q${startX+30} ${y5+8} ${startX+55} ${dY(md*0.28,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
+      <path d={`M${startX+55} ${dY(md*0.28,md)} Q${startX+150} ${dY(md*0.46,md)} ${startX+210} ${dY(md*0.54,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+140} y={dY(md*0.44,md)} n={2}/>
+      <path d={`M${startX+210} ${dY(md*0.54,md)} Q${startX+270} ${dY(md*0.7,md)} ${startX+320} ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+250} y={dY(md*0.66,md)} n={3}/>
+      <WaypointCircle x={startX+320} y={yMax} n={4}/>
+      <path d={`M${startX+320} ${yMax} Q${startX+370} ${dY(md*0.28,md)} ${startX+400} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+400} y={y5} n={5}/>
+      <SafetyStop x={startX+412} y={y5-36}/>
     </g>
   )
 }
@@ -394,14 +419,70 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
         <g>
           <Boat x={200} y={SURFACE_Y - 24}/>
           <line x1="200" y1={SURFACE_Y - 10} x2="148" y2={SURFACE_Y} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3,2" opacity="0.7"/>
-          <text x="106" y={SURFACE_Y - 20} fontSize="8" fill="#94a3b8" fontWeight="600">BOAT DROP</text>
-          <text x="106" y={SURFACE_Y - 9}  fontSize="7" fill="#475569">Not to scale</text>
+          <text x="120" y={SURFACE_Y - 22} fontSize="8" fill="#94a3b8" fontWeight="600">BOAT DROP</text>
+          <text x="120" y={SURFACE_Y - 11} fontSize="7"  fill="#475569">Not to scale</text>
         </g>
       ) : (
         <g>
-          <rect x="0" y={SURFACE_Y - 2} width="58" height={BOTTOM_Y - SURFACE_Y + 17} fill="#78350f" opacity="0.38"/>
-          <text x="29" y={SURFACE_Y + 32} fontSize="7.5" fill="#b45309" textAnchor="middle"
-            transform={`rotate(-90,29,${SURFACE_Y + 42})`}>SHORE</text>
+          {/* ── LAND above water ── */}
+          {/* sky continues behind land */}
+          <rect x="0" y={TOP_BAR} width="130" height={SURFACE_Y - TOP_BAR} fill={`url(#s-${site.slug})`}/>
+
+          {/* land mass — rises from left edge, slopes down to waterline at ~x=130 */}
+          <path d={`M0 ${TOP_BAR} L0 ${SURFACE_Y - 18} Q30 ${SURFACE_Y - 22} 60 ${SURFACE_Y - 14} Q90 ${SURFACE_Y - 6} 130 ${SURFACE_Y} L0 ${SURFACE_Y} Z`}
+            fill="#5c4a32"/>
+          {/* grass / vegetation on top */}
+          <path d={`M0 ${TOP_BAR} L0 ${SURFACE_Y - 20} Q30 ${SURFACE_Y - 25} 60 ${SURFACE_Y - 16} Q90 ${SURFACE_Y - 8} 130 ${SURFACE_Y}`}
+            fill="none" stroke="#3d6b35" strokeWidth="3" opacity="0.7"/>
+          {/* palm tree suggestion */}
+          <line x1="28" y1={SURFACE_Y - 18} x2="24" y2={TOP_BAR + 10} stroke="#5c4a32" strokeWidth="3"/>
+          <ellipse cx="22" cy={TOP_BAR + 10} rx="18" ry="8" fill="#3d6b35" opacity="0.8"/>
+          <ellipse cx="36" cy={TOP_BAR + 14} rx="14" ry="6" fill="#4a7a40" opacity="0.7"/>
+
+          {/* ── volcanic rocks / beach at waterline ── */}
+          {isWreck ? (
+            // Tulamben = black volcanic pebble beach
+            <g>
+              <path d={`M0 ${SURFACE_Y - 4} Q40 ${SURFACE_Y - 8} 90 ${SURFACE_Y - 2} Q110 ${SURFACE_Y} 130 ${SURFACE_Y + 2}`}
+                fill="#2a2a2a" stroke="#1a1a1a" strokeWidth="1"/>
+              {[8,20,32,44,56,68,80,95,110].map((cx,i) => (
+                <ellipse key={i} cx={cx} cy={SURFACE_Y - 2 + (i%2)*3} rx={5+i%3} ry="3" fill={i%2===0?'#1c1c1c':'#333'} opacity="0.9"/>
+              ))}
+              <text x="50" y={SURFACE_Y - 12} fontSize="7.5" fill="#6b7280" textAnchor="middle" fontWeight="600">VOLCANIC BEACH</text>
+            </g>
+          ) : (
+            // Sandy beach entry
+            <g>
+              <path d={`M0 ${SURFACE_Y - 6} Q50 ${SURFACE_Y - 10} 100 ${SURFACE_Y - 4} Q115 ${SURFACE_Y - 1} 130 ${SURFACE_Y + 1}`}
+                fill="#c9a96e" stroke="#b8935a" strokeWidth="1"/>
+              <text x="55" y={SURFACE_Y - 14} fontSize="7.5" fill="#b8935a" textAnchor="middle" fontWeight="600">SANDY BEACH</text>
+            </g>
+          )}
+
+          {/* ── underwater slope from shore ── */}
+          {/* beach continues underwater as shallow slope before dropping */}
+          <path d={`M0 ${SURFACE_Y} Q40 ${SURFACE_Y + 8} 90 ${SURFACE_Y + 18} Q110 ${SURFACE_Y + 22} 130 ${dY(2, md)}`}
+            fill={isWreck ? '#2a2a2a' : '#c9a96e'} opacity="0.55"/>
+
+          {/* SHORE ENTRY label with arrow */}
+          <rect x="68" y={SURFACE_Y + 30} width="76" height="18" rx="3" fill="#15803d" opacity="0.92"/>
+          <text x="106" y={SURFACE_Y + 43} fontSize="8" fill="#fff" textAnchor="middle" fontWeight="700">▶ SHORE ENTRY</text>
+
+          {/* diver silhouette walking in */}
+          <g transform={`translate(108, ${SURFACE_Y - 4})`} opacity="0.75">
+            {/* body */}
+            <circle cx="0" cy="-14" r="5" fill="#334155"/>
+            <line x1="0" y1="-9" x2="0" y2="2" stroke="#334155" strokeWidth="3"/>
+            {/* arms */}
+            <line x1="0" y1="-6" x2="-7" y2="-1" stroke="#334155" strokeWidth="2"/>
+            <line x1="0" y1="-6" x2="7"  y2="-1" stroke="#334155" strokeWidth="2"/>
+            {/* legs in water */}
+            <line x1="0" y1="2" x2="-5" y2="10" stroke="#334155" strokeWidth="2.5"/>
+            <line x1="0" y1="2" x2="5"  y2="8"  stroke="#334155" strokeWidth="2.5"/>
+            {/* fins suggestion */}
+            <ellipse cx="-6" cy="11" rx="6" ry="2.5" fill="#1d4ed8" opacity="0.8"/>
+            <ellipse cx="5"  cy="9"  rx="6" ry="2.5" fill="#1d4ed8" opacity="0.8"/>
+          </g>
         </g>
       )}
 
@@ -415,15 +496,15 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
       <Compass x={PANEL_RIGHT - 26} y={SURFACE_Y - 26}/>
 
       {/* ── ROUTES ── */}
-      {isWreck && <WreckRoute md={md}/>}
-      {isWall  && <WallRoute  md={md}/>}
+      {isWreck && <WreckRoute md={md} shore={!isBoat}/>}
+      {isWall  && <WallRoute  md={md} shore={!isBoat}/>}
       {isDrift && <DriftRoute md={md}/>}
-      {!isWreck && !isWall && !isDrift && <ReefRoute md={md}/>}
+      {!isWreck && !isWall && !isDrift && <ReefRoute md={md} shore={!isBoat}/>}
 
       {/* ── MARINE LIFE TAGS ── */}
-      {ml[0] && <MarineLifeTag x={isWall?170:210} y={dY(md*0.32,md)-32} name={ml[0].name} depthLabel={`~${Math.round(md*0.3)}m`}/>}
-      {ml[1] && <MarineLifeTag x={isWall?205:330} y={dY(md*0.54,md)-32} name={ml[1].name} depthLabel={`~${Math.round(md*0.52)}m`}/>}
-      {ml[2] && <MarineLifeTag x={isWall?240:450} y={dY(md*0.74,md)-32} name={ml[2].name} depthLabel={`~${Math.round(md*0.72)}m`}/>}
+      {ml[0] && <MarineLifeTag x={isWall?(isBoat?170:185):(!isBoat?220:210)} y={dY(md*0.32,md)-32} name={ml[0].name} depthLabel={`~${Math.round(md*0.3)}m`}/>}
+      {ml[1] && <MarineLifeTag x={isWall?(isBoat?205:220):(!isBoat?350:330)} y={dY(md*0.54,md)-32} name={ml[1].name} depthLabel={`~${Math.round(md*0.52)}m`}/>}
+      {ml[2] && <MarineLifeTag x={isWall?(isBoat?240:255):(!isBoat?470:450)} y={dY(md*0.74,md)-32} name={ml[2].name} depthLabel={`~${Math.round(md*0.72)}m`}/>}
 
       {/* ── HAZARD BADGES ── */}
       {hazards[0] && <HazardBadge x={isWall?300:150} y={dY(md*0.88,md)-4} label={hazards[0]}/>}
