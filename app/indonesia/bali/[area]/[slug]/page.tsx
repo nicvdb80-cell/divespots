@@ -1,4 +1,4 @@
-import { BALI_SITES, getSiteBySlug, BALI_AREAS } from '@/lib/data'
+import { BALI_SITES, AMED_SITES, TULAMBEN_EXTRA_SITES, getSiteBySlug, getAmedSiteBySlug, getTulambExtraSiteBySlug, BALI_AREAS } from '@/lib/data'
 import Navbar from '@/components/Navbar'
 import DiveSiteTabs from '@/components/DiveSiteTabs'
 import Link from 'next/link'
@@ -7,9 +7,14 @@ import { notFound } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 export const dynamicParams = true
 
+// Search all Bali-region datasets
+function findSite(slug: string) {
+  return getSiteBySlug(slug) || getAmedSiteBySlug(slug) || getTulambExtraSiteBySlug(slug)
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ area: string; slug: string }> }) {
   const { slug } = await params
-  const site = getSiteBySlug(slug)
+  const site = findSite(slug)
   if (!site) return {}
   return {
     title: `${site.name} Dive Site Guide | ${site.area}, Bali, Indonesia | Dive Spots`,
@@ -18,10 +23,16 @@ export async function generateMetadata({ params }: { params: Promise<{ area: str
 }
 
 export default async function DiveSitePage({ params }: { params: Promise<{ area: string; slug: string }> }) {
-  const { slug } = await params
-  const site = getSiteBySlug(slug)
+  const { slug, area } = await params
+  const site = findSite(slug)
   if (!site) { notFound(); return null }
-  const nearby = BALI_SITES.filter(s => s.areaSlug === site.areaSlug && s.slug !== site.slug).slice(0, 3)
+
+  // Pick the right sidebar list based on area
+  const isAmed = area === 'amed' || site.areaSlug === 'amed'
+  const isTulamben = area === 'tulamben' || site.areaSlug === 'tulamben'
+  const sidebarSites = isAmed ? AMED_SITES : isTulamben ? [...BALI_SITES.filter(s => s.areaSlug === 'tulamben'), ...TULAMBEN_EXTRA_SITES] : BALI_SITES
+  const nearby = [...BALI_SITES, ...AMED_SITES, ...TULAMBEN_EXTRA_SITES]
+    .filter(s => s.areaSlug === site.areaSlug && s.slug !== site.slug).slice(0, 3)
 
   return (
     <main style={{ minHeight: "100vh", background: "#fff" }}>
@@ -30,36 +41,34 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
         <aside style={{ background: "#0a1628", borderRight: "1px solid #1e3a5f", overflowY: "auto", maxHeight: "calc(100vh - 60px)", position: "sticky", top: 60 }}>
           <div style={{ padding: "1rem", borderBottom: "1px solid #1e3a5f" }}>
             <div style={{ fontSize: 10, color: "#475569" }}>Indonesia</div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>BALI</div>
-            <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>Top 20 dive sites in Bali</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>BALI · {site.area.toUpperCase()}</div>
           </div>
           <div style={{ padding: "0.5rem 0" }}>
-            {BALI_SITES.map(s => (
+            {sidebarSites.map(s => (
               <Link key={s.slug} href={`/indonesia/bali/${s.areaSlug}/${s.slug}`}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", borderLeft: s.slug === site.slug ? "3px solid #ef4444" : "3px solid transparent", background: s.slug === site.slug ? "#1e3a5f" : "none" }}>
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", borderLeft: s.slug === site.slug ? "3px solid #ef4444" : "3px solid transparent", background: s.slug === site.slug ? "#1e3a5f" : "none", textDecoration: "none" }}>
                 <span style={{ fontSize: 11, color: s.slug === site.slug ? "#ef4444" : "#334155", minWidth: 18, fontWeight: 700 }}>{s.rank}</span>
                 <span style={{ fontSize: 12, color: s.slug === site.slug ? "#fff" : "#64748b", fontWeight: s.slug === site.slug ? 700 : 400, lineHeight: 1.3 }}>{s.name}</span>
               </Link>
             ))}
           </div>
           <div style={{ borderTop: "1px solid #1e3a5f", padding: "1rem" }}>
-            <Link href="/indonesia/bali" style={{ display: "block", fontSize: 12, color: "#60a5fa", marginBottom: "1rem" }}>View all sites in Bali</Link>
-            <Link href="/submit-dive-site" style={{ display: "block", background: "#16a34a", color: "#fff", padding: "7px 10px", borderRadius: 7, fontSize: 11, fontWeight: 700, textAlign: "center" }}>Submit a dive site</Link>
+            <Link href="/indonesia/bali" style={{ display: "block", fontSize: 12, color: "#60a5fa", marginBottom: "1rem" }}>← All Bali sites</Link>
           </div>
         </aside>
 
         <div style={{ overflowY: "auto" }}>
-          <div style={{ background: "#020d1a url(/hero-bg.png) center top / cover no-repeat", padding: "1.25rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
+          <div style={{ background: "#020d1a", padding: "1.25rem 2rem", borderBottom: "1px solid #1e3a5f" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>
-              <Link href="/" style={{ color: "#475569" }}>Home</Link> › <Link href="/indonesia" style={{ color: "#475569" }}>Indonesia</Link> › <Link href="/indonesia/bali" style={{ color: "#475569" }}>Bali</Link>
+              <Link href="/" style={{ color: "#475569" }}>Home</Link> › <Link href="/indonesia" style={{ color: "#475569" }}>Indonesia</Link> › <Link href="/indonesia/bali" style={{ color: "#475569" }}>Bali</Link> › {site.area}
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>BALI</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>{site.area.toUpperCase()}</div>
           </div>
 
           <div style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "0.75rem 2rem", display: "flex", gap: 8, overflowX: "auto" }}>
             {BALI_AREAS.map(a => (
               <Link key={a.slug} href={`/indonesia/bali/areas/${a.slug}`}
-                style={{ padding: "6px 12px", background: site.areaSlug === a.slug ? "#0a1628" : "#fff", border: "1px solid " + (site.areaSlug === a.slug ? "#0a1628" : "#e2e8f0"), borderRadius: 8, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", color: site.areaSlug === a.slug ? "#fff" : "#475569", flexShrink: 0 }}>
+                style={{ padding: "6px 12px", background: site.areaSlug === a.slug ? "#0a1628" : "#fff", border: "1px solid " + (site.areaSlug === a.slug ? "#0a1628" : "#e2e8f0"), borderRadius: 8, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", color: site.areaSlug === a.slug ? "#fff" : "#475569", flexShrink: 0, textDecoration: "none" }}>
                 {a.name}
               </Link>
             ))}
@@ -69,14 +78,11 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
             <div>
               <div style={{ marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, padding: "3px 10px", background: "#0a1628", color: "#fff", borderRadius: 4, fontWeight: 700 }}>#{site.rank} in Bali</span>
+                  <span style={{ fontSize: 11, padding: "3px 10px", background: "#0a1628", color: "#fff", borderRadius: 4, fontWeight: 700 }}>#{site.rank} in {site.area}</span>
                   <span style={{ fontSize: 11, padding: "3px 10px", background: "#dbeafe", color: "#1d4ed8", borderRadius: 4, fontWeight: 600 }}>Admin verified</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>Indonesia › Bali › {site.area}</div>
                 <h1 style={{ fontSize: 32, fontWeight: 900, color: "#0a1628", letterSpacing: -1, marginBottom: 8, textTransform: "uppercase" }}>{site.name}</h1>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: "#64748b" }}>Location: {site.area}, Bali, Indonesia</span>
-                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ color: "#f59e0b", fontSize: 18 }}>{"★".repeat(Math.round(site.rating))}</span>
                   <span style={{ fontWeight: 700, fontSize: 15 }}>{site.rating}</span>
@@ -104,16 +110,11 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
                   </div>
                 ))}
               </div>
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "1.25rem", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#15803d", marginBottom: 8 }}>INFORMATION STATUS</div>
-                <div style={{ fontSize: 12, color: "#166534", marginBottom: 10 }}>Status: Admin reviewed | Last updated: July 2026</div>
-                <Link href="/submit-dive-site" style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Submit correction</Link>
-              </div>
               {nearby.length > 0 && (
                 <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "1.25rem" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 10 }}>MORE IN {site.area.toUpperCase()}</div>
                   {nearby.map(s => (
-                    <Link key={s.slug} href={`/indonesia/bali/${s.areaSlug}/${s.slug}`} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid #f8fafc", alignItems: "center" }}>
+                    <Link key={s.slug} href={`/indonesia/bali/${s.areaSlug}/${s.slug}`} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid #f8fafc", alignItems: "center", textDecoration: "none" }}>
                       <span style={{ fontSize: 11, color: "#475569" }}>#{s.rank}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, color: "#0f172a", fontWeight: 600 }}>{s.name}</div>
@@ -134,7 +135,6 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
           <div style={{ display: "flex", gap: "1.5rem" }}>
             <Link href="/about" style={{ fontSize: 12, color: "#475569" }}>About</Link>
             <Link href="/privacy" style={{ fontSize: 12, color: "#475569" }}>Privacy</Link>
-            <Link href="/contact" style={{ fontSize: 12, color: "#475569" }}>Contact</Link>
           </div>
         </div>
       </footer>
