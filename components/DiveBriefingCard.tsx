@@ -517,8 +517,8 @@ function DiveRoute({ pts }:{pts:[number,number][]}) {
   )
 }
 
-function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean):[number,number][] {
-  const ex=isBoat?GL+320:GL+140
+function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?:EntryExit):[number,number][] {
+  const ex=ee?.entryType==="boat"?(ee.boatDropX>0?ee.boatDropX:GL+320):(isBoat?GL+320:GL+140)
   switch(template) {
     case 'wreck': {
       const keel=dY(md*.73,md), deck=dY(md*.43,md)
@@ -775,25 +775,157 @@ function RightPanel({site,hazards,waypoints}:{site:DiveSite;hazards:string[];way
 }
 
 // ── MAIN RENDERER ──────────────────────────────────────────────────────────
-export default function DiveBriefingCard({site}:{site:DiveSite}) {
-  const {maxDepth:md,minDepth,visibility,temp,difficulty,minCert,
-         bestTime,bestSeason,type,access,current,name,area,
-         marineLife,safetyNotes,rank}=site
+// ── ENTRY / EXIT CLASSIFIER ──────────────────────────────────────────────
+// Reads the actual site data — not just access:'Boat'|'Shore'
+// Returns structured entry/exit info used by the renderer.
+type EntryExit = {
+  entryType: 'boat'|'shore-sand'|'shore-pebble'|'shore-black-sand'|'jetty'
+  exitType:  'boat-pickup'|'shore-same'|'shore-drift-end'|'smb-open-water'
+  boatDropX: number   // x position of boat drop (if boat entry)
+  pickupX:   number   // x position of pickup boat (if boat exit)
+  entryLabel: string
+  exitLabel:  string
+}
+
+function classifyEntryExit(site: DiveSite, template: DiagramTemplate): EntryExit {
+  const { access, diagramType, type, description, name } = site
+  const desc = description.toLowerCase()
+  const nm   = name.toLowerCase()
+  const isBoat = access === 'Boat'
+
+  // Entry type
+  let entryType: EntryExit['entryType'] = 'shore-sand'
+  if (isBoat) {
+    entryType = 'boat'
+  } else if (desc.includes('black') || desc.includes('volcanic') || desc.includes('pebble')) {
+    entryType = 'shore-black-sand'
+  } else if (nm.includes('pier') || nm.includes('jetty') || template === 'jetty') {
+    entryType = 'jetty'
+  } else if (desc.includes('sand') || desc.includes('sandy')) {
+    entryType = 'shore-sand'
+  } else {
+    entryType = 'shore-pebble'
+  }
+
+  // Exit type — drift & open-water pelagic sites exit by SMB, not back to entry
+  let exitType: EntryExit['exitType'] = isBoat ? 'boat-pickup' : 'shore-same'
+  if (template === 'drift' || type === 'Drift') {
+    exitType = isBoat ? 'smb-open-water' : 'shore-drift-end'
+  }
+  if (diagramType === 'boat' && !isBoat) {
+    // Shore-entry sites that are described as drift (e.g. wall dives that exit by SMB)
+    if (desc.includes('smb') || desc.includes('signal') || desc.includes('drift')) {
+      exitType = 'smb-open-water'
+    }
+  }
+
+  // Boat positions — drift sites: drop left, pickup right; circuit/reef: drop & pickup near entry
+  const isDrift = template === 'drift' || type === 'Drift'
+  const boatDropX = isBoat ? (isDrift ? GL + 240 : GL + 320) : 0
+  const pickupX   = isBoat
+    ? (isDrift ? GL + DW - 120 : (exitType === 'smb-open-water' ? GL + DW - 80 : GL + 320))
+    : 0
+
+  const entryLabel = isBoat
+    ? (isDrift ? 'BOAT DROP' : 'BOAT ENTRY')
+    : (template === 'jetty' ? 'JETTY ENTRY' : 'SHORE ENTRY')
+  const exitLabel = exitType === 'boat-pickup' ? 'PICK UP'
+    : exitType === 'smb-open-water' ? 'SMB PICK UP'
+    : exitType === 'shore-drift-end' ? 'SHORE EXIT'
+    : 'SHORE EXIT'
+
+  return { entryType, exitType, boatDropX, pickupX, entryLabel, exitLabel }
+}
+
+// ── ENTRY VISUALS ─────────────────────────────────────────────────────────
+
+function EntryVisual({ ee }: { ee: EntryExit }) {
+  if (ee.entryType === 'boat') {
+    return (
+      <g>
+        <BoatIcon x={ee.boatDropX} y={SY - 62} label={ee.entryLabel}/>
+        {/* descent line from boat */}
+        <Ln x1={ee.boatDropX} y1={SY-14} x2={ee.boatDropX-16} y2={SY+2} color={C.tex3} width={1.5}/>
+      </g>
+    )
+  }
+  if (ee.entryType === 'jetty') {
+    // Jetty: vertical pilings from surface, platform at waterline
+    return (
+      <g>
+        <rect x={0} y={SY-22} width={280} height={16} rx="3" fill={C.tex3} stroke={C.div} strokeWidth="1.5"/>
+        {[60,110,160,210,260].map(px => (
+          <rect key={px} x={px-5} y={SY-6} width={10} height={40} rx="2" fill="#1a2a18" stroke={C.trS} strokeWidth="1"/>
+        ))}
+        <Tx x={140} y={SY-34} sz={15} fill={C.tex2} w="700" a="middle" ls="1.5">JETTY ENTRY</Tx>
+      </g>
+    )
+  }
+  // Shore entries — different beach textures
+  const beachFill = ee.entryType === 'shore-black-sand' ? '#1a1a1e'
+    : ee.entryType === 'shore-pebble' ? '#5a5a5a'
+    : C.sandL
+  const landFill = ee.entryType === 'shore-black-sand' ? '#2d2d2a' : '#2d5228'
+  const beachLabel = ee.entryType === 'shore-black-sand' ? 'BLACK SAND'
+    : ee.entryType === 'shore-pebble' ? 'PEBBLE BEACH'
+    : 'SHORE ENTRY'
+  return (
+    <g>
+      <path d={`M0 ${DGM_Y} L0 ${SY-26} Q70 ${SY-42} 148 ${SY-20} Q195 ${SY-8} 240 ${SY} L0 ${SY} Z`}
+        fill={landFill}/>
+      <path d={`M0 ${SY-8} Q90 ${SY-18} 176 ${SY-6} Q210 ${SY-2} 242 ${SY}`}
+        fill={beachFill} opacity={ee.entryType === 'shore-black-sand' ? 0.9 : 0.7}/>
+      <Tx x={120} y={SY-50} sz={15} fill={C.tex2} w="700" a="middle" ls="1.5">{beachLabel}</Tx>
+    </g>
+  )
+}
+
+function ExitVisual({ ee, routeEndX, routeEndY }: { ee: EntryExit; routeEndX: number; routeEndY: number }) {
+  if (ee.exitType === 'boat-pickup' || ee.exitType === 'smb-open-water') {
+    const px = ee.pickupX
+    // Only show pickup boat if it's in a meaningfully different position from entry
+    const showPickup = Math.abs(px - ee.boatDropX) > 200 || ee.exitType === 'smb-open-water'
+    return showPickup ? (
+      <g>
+        <BoatIcon x={px} y={SY - 62} label={ee.exitLabel}/>
+        {/* SMB line from safety stop up to surface */}
+        <line x1={routeEndX} y1={routeEndY - 20} x2={px} y2={SY - 14}
+          stroke={C.green} strokeWidth="2" strokeDasharray="6,4" opacity="0.7"/>
+        {/* SMB balloon */}
+        <ellipse cx={routeEndX} cy={routeEndY - 36} rx="8" ry="12" fill={C.orange} opacity="0.9"/>
+      </g>
+    ) : null
+  }
+  // Shore exit — arrow pointing back to shore
+  if (ee.exitType === 'shore-same' || ee.exitType === 'shore-drift-end') {
+    const exitX = ee.exitType === 'shore-drift-end' ? GL + 180 : GL + 100
+    return (
+      <g>
+        <rect x={exitX - 60} y={SY - 32} width={120} height={26} rx="6" fill={C.bgGn} opacity="0.9"/>
+        <Tx x={exitX} y={SY - 14} sz={13} fill={C.green} w="700" a="middle" ls="0.5">▶ SHORE EXIT</Tx>
+      </g>
+    )
+  }
+  return null
+}
 
   const template = getTemplate(site)
   const id       = site.slug.replace(/[^a-z0-9]/g,'-')
+  const ee       = classifyEntryExit(site, template)
   const isBoat   = access==='Boat'
   const hasStr   = /strong|very/i.test(current)
   const curStr   = hasStr?'strong':/mild|weak/i.test(current)?'weak':'moderate'
-  const dispName = name.length>30?name.slice(0,28).toUpperCase()+'…':name.toUpperCase()
+  const dispName = name.length>30?name.slice(0,28).toUpperCase()+'..':name.toUpperCase()
 
-  const routePts = getRoutePoints(template,md,isBoat)
+  const routePts = getRoutePoints(template,md,isBoat,ee)
   const mlPos    = getMLPositions(template,md)
   const ml       = marineLife.slice(0,5)
   const hazards  = safetyNotes.slice(0,3)
   const waypoints= buildWaypoints(template,isBoat)
   const timeline = buildTimeline(template,md,isBoat)
   const tips     = buildTips(template,site)
+
+  const lastPt   = routePts[routePts.length-1]
 
   const infoCards:[string,string,string][]=[
     ['DIVE TYPE',type,''],['DIFFICULTY',difficulty,''],['CERTIFICATION',minCert,''],
@@ -839,10 +971,11 @@ export default function DiveBriefingCard({site}:{site:DiveSite}) {
       {/* DIAGRAM */}
       <rect x="0" y={DGM_Y} width={PX} height={SKY_H} fill={`url(#sky-${id})`}/>
       <rect x="0" y={SY}    width={PX} height={DGM_Y+DGM_H-SY} fill={`url(#sea-${id})`}/>
-      {isBoat?<><BoatIcon x={320} y={SY-62} label="BOAT DROP"/><BoatIcon x={980} y={SY-62} label="PICK UP"/></>:<ShoreEntry/>}
+      {/* Entry */}<EntryVisual ee={ee}/>
       <DepthScale max={md}/>
       <Terrain template={template} md={md}/>
       <DiveRoute pts={routePts}/>
+      <ExitVisual ee={ee} routeEndX={lastPt[0]} routeEndY={lastPt[1]}/>
       <CurrentViz x={isBoat?GL+DW*.36:GL+DW*.28} y={SY+58} strength={curStr as 'weak'|'moderate'|'strong'}/>
       {ml.map((m,i)=>{
         const [mx,my]=mlPos[i]??mlPos[mlPos.length-1]
