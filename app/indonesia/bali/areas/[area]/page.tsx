@@ -3,9 +3,8 @@ import Navbar from '@/components/Navbar'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-export async function generateStaticParams() {
-  return BALI_AREAS.map(a => ({ area: a.slug }))
-}
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
 
 const AREA_INFO: Record<string,{desc:string;bestFor:string[];conditions:string;season:string;depth:string}> = {
   'tulamben':{desc:'Tulamben is home to the famous USAT Liberty Wreck — one of the most accessible wreck dives in the world. The black volcanic beach, calm waters, and diverse marine life make it a must-dive destination for all levels.',bestFor:['Wreck diving','Night diving','Macro photography','All levels'],conditions:'Calm, mild current, excellent visibility',season:'Year round, best Apr–Nov',depth:'3–30m'},
@@ -19,11 +18,12 @@ const AREA_INFO: Record<string,{desc:string;bestFor:string[];conditions:string;s
   'candidasa':{desc:'Candidasa offers reef and rock diving with reliable sightings of reef sharks, turtles, and schools of fish.',bestFor:['Reef diving','Marine life','Intermediate divers'],conditions:'Moderate current',season:'Apr–Nov',depth:'5–25m'},
 }
 
-export default function AreaPage({ params }: { params: { area: string } }) {
-  const areaData = BALI_AREAS.find(a => a.slug === params.area)
+export default async function AreaPage({ params }: { params: Promise<{ area: string }> }) {
+  const { area } = await params
+  const areaData = BALI_AREAS.find(a => a.slug === area)
   if (!areaData) notFound()
-  const info = AREA_INFO[params.area] || {desc:areaData.desc,bestFor:[],conditions:'Check locally',season:'Apr–Nov',depth:'5–30m'}
-  const sites = BALI_SITES.filter(s => s.areaSlug === params.area)
+  const info = AREA_INFO[area] || {desc:areaData.desc,bestFor:[],conditions:'Check locally',season:'Apr–Nov',depth:'5–30m'}
+  const sites = BALI_SITES.filter(s => s.areaSlug === area)
   return (
     <main style={{minHeight:'100vh',background:'#fff'}}>
       <Navbar/>
