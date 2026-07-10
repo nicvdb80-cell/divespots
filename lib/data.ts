@@ -7,6 +7,7 @@ export type DiveSite = {
   description: string; marineLife: {name:string;frequency:string}[]
   safetyNotes: string[]; briefing: string; emergencyContact: string
   diagramType: 'shore'|'boat'|'wall'|'wreck'|'smallwreck'
+  template: 'wreck'|'wall'|'reef-slope'|'muck'|'cleaning-station'|'bay-dropoff'|'pinnacle'|'drift'|'jetty'
 }
 export const BALI_SITES: DiveSite[] = [
   { slug:'usat-liberty-wreck',name:'USAT Liberty Wreck',area:'Tulamben',areaSlug:'tulamben',rank:1,type:'Wreck',access:'Shore',minDepth:5,maxDepth:30,avgDepth:18,visibility:'15–25m',temp:'27–29°C',current:'Mild — surge possible near bow',difficulty:'All levels',minCert:'Open Water',bestTime:'Dawn (5:15–5:30am) for bumpheads & best visibility',bestSeason:'Apr–Nov',goodFor:['Wreck diving','Night diving','All levels','Macro photography','Bumphead parrotfish'],facilities:['Dive centres in Tulamben village','Shore access — porters carry tanks','Equipment rental','Accommodation nearby'],lat:-8.2809,lng:115.6029,rating:4.9,reviews:312,description:'One of the most accessible and celebrated wreck dives in the world. The 120m USAT Liberty (US Army Transport) was torpedoed by Japanese submarine I-166 in 1942 and rolled off Tulamben beach by the 1963 Mount Agung eruption. She now lies on her starboard side on a black volcanic sand slope, just 30m from shore. The stern sits at 5m and the bow at 30m. Encrusted in dense soft and hard coral with one of the densest fish populations of any wreck on earth — a true living reef. Dive at dawn for bumphead parrotfish and fewer crowds.',marineLife:[{name:'Bumphead parrotfish',frequency:'common'},{name:'Schooling jackfish',frequency:'very common'},{name:'Reef sharks',frequency:'occasional'},{name:'Giant grouper',frequency:'common'},{name:'Pygmy seahorse',frequency:'rare'},{name:'Hawksbill turtle',frequency:'occasional'}],safetyNotes:['Shore entry over smooth volcanic pebbles — go slowly with gear','Surge near bow in swell','Boat traffic offshore — ascend on the wreck, deploy SMB at surface','Do not push into tight swim-throughs — wreck is collapsing in places'],briefing:'Shore entry from Tulamben black pebble beach. Local porters carry tanks to waterline. Wade in, lean back, descend on sandy slope to stern at 5m. Swim north along the wreck — upper deck, midship break, engine room, bow. Return via wreck or sand. Safety stop at 5m on the wreck shallow section.',emergencyContact:'BIMC Hospital Tulamben / Kuta: +62 361 761263',diagramType:'wreck' },
@@ -110,3 +111,64 @@ export const SULAWESI_AREAS=[
   {slug:'togean-islands',name:'Togean Islands',count:28,desc:'Remote pristine reefs'},
   {slug:'wakatobi',name:'Wakatobi',count:35,desc:'World-class reef systems'},
 ]
+
+// ─────────────────────────────────────────────────────────────────────────
+//  TEMPLATE RESOLVER
+//  Derives the correct diagram template from existing site data.
+//  No data modifications needed — reads goodFor, name, type, description.
+//  Returns one of 9 distinct templates.
+// ─────────────────────────────────────────────────────────────────────────
+export type DiagramTemplate =
+  | 'wreck'
+  | 'wall'
+  | 'cleaning-station'
+  | 'bay-dropoff'
+  | 'pinnacle'
+  | 'drift'
+  | 'muck'
+  | 'jetty'
+  | 'reef-slope'
+
+export function getTemplate(site: DiveSite): DiagramTemplate {
+  const n    = site.name.toLowerCase()
+  const desc = site.description.toLowerCase()
+  const gf   = site.goodFor.map(g => g.toLowerCase()).join(' ')
+  const type = site.type
+
+  // Wreck — explicit
+  if (site.diagramType === 'wreck' || type === 'Wreck') return 'wreck'
+
+  // Wall — explicit
+  if (site.diagramType === 'wall' || type === 'Wall') return 'wall'
+
+  // Muck — explicit type
+  if (type === 'Muck') return 'muck'
+
+  // Jetty / pier — name or description
+  if (n.includes('pier') || n.includes('jetty') || n.includes('kungkungan'))
+    return 'jetty'
+
+  // Cleaning station — manta / specific stations
+  if (gf.includes('manta') || n.includes('manta') || desc.includes('cleaning station'))
+    return 'cleaning-station'
+
+  // Pinnacle / seamount — name or goodFor
+  if (n.includes('pinnacle') || n.includes('magic') || n.includes('mount') ||
+      n.includes('seamount') || n.includes('kri') || n.includes('sahaung') ||
+      n.includes('fukui') || n.includes('alung') || gf.includes('seamount') ||
+      gf.includes('pelagic') || gf.includes('big fish'))
+    return 'pinnacle'
+
+  // Drift
+  if (type === 'Drift' || gf.includes('drift') || n.includes('passage') || n.includes('drift'))
+    return 'drift'
+
+  // Bay / drop-off — protected bay or specific drop-off structure
+  if (n.includes('bay') || n.includes('lagoon') || n.includes('crystal') ||
+      desc.includes('protected bay') || desc.includes('sheltered bay') ||
+      desc.includes('sandy bottom') && desc.includes('slope'))
+    return 'bay-dropoff'
+
+  // Default: reef slope
+  return 'reef-slope'
+}
