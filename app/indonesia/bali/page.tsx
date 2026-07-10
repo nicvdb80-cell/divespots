@@ -6,7 +6,7 @@ export default function BaliPage() {
   return (
     <main style={{ minHeight:'100vh', background:'#0d1b2e' }}>
       <Navbar />
-      <div style={{ background:'linear-gradient(135deg,#0a1628,#1e3a5f)', padding:'2.5rem 2rem', color:'#fff', borderBottom:'1px solid #1e3a5f' }}>
+      <div style={{ background:'#020d1a url(/hero-bg.png) center center / cover no-repeat', padding:'2.5rem 2rem', color:'#fff', borderBottom:'1px solid #1e3a5f' }}>
         <div style={{ fontSize:11,color:'#60a5fa',marginBottom:8 }}>🇮🇩 Indonesia · Bali</div>
         <h1 style={{ fontSize:36,fontWeight:900,marginBottom:10 }}>BALI DIVE SITES</h1>
         <p style={{ color:'#64748b',maxWidth:560,fontSize:13,lineHeight:1.7,marginBottom:'1.5rem' }}>Bali offers world-class diving for every level — from historic wrecks and volcanic reefs to manta rays, drift dives, macro life, and beginner-friendly bays.</p>

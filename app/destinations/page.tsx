@@ -13,7 +13,7 @@ export default function DestinationsPage() {
   return (
     <main style={{minHeight:'100vh',background:'#fff'}}>
       <Navbar/>
-      <div style={{background:'linear-gradient(135deg,#0a1628,#1e3a5f)',padding:'3rem 2rem',color:'#fff',borderBottom:'1px solid #1e3a5f'}}>
+      <div style={{background:'#020d1a url(/hero-bg.png) center center / cover no-repeat',padding:'3rem 2rem',color:'#fff',borderBottom:'1px solid #1e3a5f'}}>
         <div style={{maxWidth:1100,margin:'0 auto'}}>
           <p style={{fontSize:11,letterSpacing:3,color:'#60a5fa',marginBottom:10,textTransform:'uppercase'}}>Dive Destinations</p>
           <h1 style={{fontSize:36,fontWeight:900,letterSpacing:-1,marginBottom:10}}>EXPLORE BY COUNTRY</h1>

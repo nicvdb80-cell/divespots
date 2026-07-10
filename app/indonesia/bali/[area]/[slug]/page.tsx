@@ -49,7 +49,7 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
         </aside>
 
         <div style={{ overflowY: "auto" }}>
-          <div style={{ background: "linear-gradient(135deg,#0a1628,#1e3a5f)", padding: "1.25rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
+          <div style={{ background: "#020d1a url(/hero-bg.png) center top / cover no-repeat", padding: "1.25rem 2rem", borderBottom: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>
               <Link href="/" style={{ color: "#475569" }}>Home</Link> › <Link href="/indonesia" style={{ color: "#475569" }}>Indonesia</Link> › <Link href="/indonesia/bali" style={{ color: "#475569" }}>Bali</Link>
             </div>

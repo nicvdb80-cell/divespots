@@ -16,8 +16,8 @@ export default function Home() {
   return (
     <main style={{minHeight:'100vh',background:'#fff'}}>
       <Navbar/>
-      <div style={{background:'linear-gradient(135deg,#0a1628 0%,#0d2845 50%,#0a1628 100%)',padding:'6rem 2rem 5rem',color:'#fff',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',inset:0,opacity:0.03,backgroundImage:'radial-gradient(#fff 1px,transparent 1px)',backgroundSize:'32px 32px'}}/>
+      <div style={{background:'#020d1a url(/hero-bg.png) center center / cover no-repeat',padding:'6rem 2rem 5rem',color:'#fff',position:'relative',overflow:'hidden'}}>
+        
         <div style={{maxWidth:1100,margin:'0 auto',position:'relative'}}>
           <p style={{fontSize:11,letterSpacing:3,color:'#60a5fa',marginBottom:20,textTransform:'uppercase'}}>World dive site database</p>
           <h1 style={{fontSize:64,fontWeight:900,letterSpacing:-2,marginBottom:20,lineHeight:1,textTransform:'uppercase'}}>EXPLORE THE OCEAN</h1>
