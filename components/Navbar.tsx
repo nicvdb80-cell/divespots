@@ -33,7 +33,6 @@ export default function Navbar() {
           <span style={{fontSize:12,color:'#475569'}}>Search dive sites…</span>
         </div>
         <Link href="/submit-dive-site" style={{width:28,height:28,background:'#ef4444',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:18,fontWeight:300,flexShrink:0}}>+</Link>
-        <Link href="/admin" style={{fontSize:11,color:'#94a3b8',padding:'5px 12px',border:'1px solid #1e3a5f',borderRadius:6}}>Admin</Link>
         <div style={{fontSize:11,color:'#94a3b8',padding:'5px 12px',border:'1px solid #1e3a5f',borderRadius:6,cursor:'pointer'}}>Sign in</div>
       </div>
     </nav>
