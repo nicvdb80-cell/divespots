@@ -543,7 +543,7 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
   for (let d = 0; d <= md; d += step) depthMarkers.push(d)
 
   const isWreck      = diagramType === 'wreck'
-  const isSmallWreck = diagramType === 'smallwreck'
+  const isSmallWreck = false
   const isWall     = diagramType === 'wall'
   const isDrift    = type === 'Drift'
   const isPinnacle = name.toLowerCase().includes('magic') || name.toLowerCase().includes('pinnacle') || name.toLowerCase().includes('mount')
