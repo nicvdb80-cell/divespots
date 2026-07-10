@@ -4,6 +4,7 @@ import { useAuth } from './AuthProvider'
 import AuthModal from './AuthModal'
 import Link from 'next/link'
 import DiveDiagram from './DiveDiagram'
+import DiveBriefingCard from './DiveBriefingCard'
 import { DiveSite } from '@/lib/data'
 
 const freqColor = (f:string) => ({'very common':'#16a34a','common':'#2563eb','occasional':'#d97706','seasonal':'#7c3aed','rare':'#dc2626','Early morning':'#0891b2'}[f]||'#64748b')
@@ -39,7 +40,7 @@ export default function DiveSiteTabs({ site }: { site: DiveSite }) {
   const reviews = REVIEWS[site.slug] || []
 
   const tabs: {id:TabId;label:string}[] = [
-    {id:'diagram',label:'Dive Site Diagram'},
+    {id:'diagram',label:'Dive Briefing'},
     {id:'details',label:'Details'},
     {id:'marine',label:'Marine Life'},
     {id:'safety',label:'Safety'},
@@ -93,13 +94,9 @@ export default function DiveSiteTabs({ site }: { site: DiveSite }) {
         ))}
       </div>
 
-      {activeTab==='diagram'&&(
-        <div style={{background:'#0a1628',borderRadius:12,overflow:'hidden',marginBottom:'1.5rem'}}>
-          <div style={{padding:'10px 14px',borderBottom:'1px solid #1e3a5f'}}>
-            <span style={{fontSize:12,fontWeight:700,color:'#94a3b8'}}>Dive Site Diagram</span>
-            <span style={{fontSize:10,color:'#475569',marginLeft:10}}>· {site.access} access · {site.minDepth}–{site.maxDepth}m</span>
-          </div>
-          <DiveDiagram site={site}/>
+            {activeTab==='diagram'&&(
+        <div style={{borderRadius:12,overflow:'hidden',marginBottom:'1.5rem'}}>
+          <DiveBriefingCard site={site}/>
         </div>
       )}
 
