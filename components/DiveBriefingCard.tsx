@@ -518,36 +518,134 @@ function DiveRoute({ pts }:{pts:[number,number][]}) {
 }
 
 function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?:EntryExit):[number,number][] {
-  const ex=ee?.entryType==="boat"?(ee.boatDropX>0?ee.boatDropX:GL+320):(isBoat?GL+320:GL+140)
+  // Entry x — boat uses drop position, shore uses left edge
+  const entryX = isBoat ? (ee?.boatDropX ?? GL+320) : GL+150
+  // Safety stop / exit x:
+  //   Shore dives → return to near shore (left side, 5m depth)
+  //   Boat dives  → SMB ascent right side for pickup
+  //   Drift       → exit right (current carried them there)
+  const isDrift = template === 'drift'
+  const ssX = isBoat
+    ? (isDrift ? GL+DW-80 : GL+DW*0.62)  // boat: right side for pickup
+    : GL+200                               // shore: back near entry/shore
+  const ssY = dY(5, md)                   // safety stop always at 5m
+
   switch(template) {
     case 'wreck': {
+      // Shore wreck: entry left → bow → midship → stern (deepest) → ascend sand slope → SS near shore
+      // Boat wreck:  drop → bow → midship → stern → ascend → SS right side pickup
       const keel=dY(md*.73,md), deck=dY(md*.43,md)
-      return [[ex,SY+24],[GL+240,deck+18],[GL+430,(deck+keel)/2+8],[GL+650,keel-8],[GL+870,dY(md*.20,md)]]
+      const bow  = GL+220
+      const mid  = GL+440
+      const stern= GL+660
+      // Return: from stern, ascend sandy slope back toward entry side
+      const returnX = isBoat ? GL+DW*0.60 : GL+280
+      return [
+        [entryX,        SY+24],        // 1 entry
+        [bow,           deck+14],       // 2 wreck bow
+        [mid,           (deck+keel)/2], // 3 midship
+        [stern,         keel-6],        // 4 stern / max depth
+        [returnX,       dY(8,md)],      // 5 ascent on sandy slope
+        [ssX,           ssY],           // 6 safety stop — near shore or pickup
+      ]
     }
-    case 'wall':
-      return [[isBoat?GL+388:GL+244,SY+24],[GL+278,dY(md*.26,md)],[GL+298,dY(md*.54,md)],[GL+318,dY(md*.84,md)],[GL+590,dY(md*.18,md)]]
+    case 'wall': {
+      // Wall always descends on the wall (left side), ascends same wall
+      // Shore: SS back at wall top near entry
+      // Boat: SS in water column, SMB pickup
+      const wallX = GL+290
+      const deepX = GL+310
+      return [
+        [entryX,  SY+24],           // 1 entry / descent
+        [wallX,   dY(md*.26,md)],   // 2 upper wall
+        [wallX+20,dY(md*.54,md)],   // 3 mid wall
+        [deepX,   dY(md*.85,md)],   // 4 max depth / turn
+        [wallX,   dY(md*.26,md)],   // 5 ascend back up wall
+        [ssX,     ssY],             // 6 safety stop
+      ]
+    }
     case 'cleaning-station': {
+      // Circuit: entry → station 1 → station 2 → station 3 → return to entry side → SS
       const pY=dY(md*.38,md)
-      return [[isBoat?GL+480:GL+240,SY+24],[GL+360,pY-20],[GL+600,pY-14],[GL+848,pY-18],[GL+1000,dY(md*.16,md)]]
+      return [
+        [entryX,    SY+24],    // 1 entry
+        [GL+380,    pY-16],    // 2 station 1
+        [GL+610,    pY-12],    // 3 station 2 (main)
+        [GL+860,    pY-16],    // 4 station 3
+        [GL+440,    pY-8],     // 5 return across plateau
+        [ssX,       ssY],      // 6 safety stop
+      ]
     }
     case 'bay-dropoff': {
+      // Shallow plateau → drop-off edge → deep point → back across plateau → SS
       const shY=dY(md*.20,md), dropX=GL+520
-      return [[isBoat?GL+320:GL+180,SY+24],[GL+290,shY+8],[dropX+20,dY(md*.38,md)],[dropX+50,dY(md*.72,md)],[dropX+280,dY(md*.18,md)]]
+      return [
+        [entryX,      SY+24],              // 1 entry
+        [GL+300,      shY+10],             // 2 shallow plateau
+        [dropX+20,    dY(md*.38,md)],      // 3 drop-off edge
+        [dropX+60,    dY(md*.76,md)],      // 4 max depth
+        [GL+320,      dY(md*.22,md)],      // 5 return across plateau
+        [ssX,         ssY],                // 6 safety stop
+      ]
     }
     case 'pinnacle': {
+      // Descend → top → circuit → deep side → ascend → SS
       const pcx=GL+DW*.43, pcy=dY(md*.07,md)
-      return [[isBoat?pcx:pcx-200,SY+24],[pcx,pcy+32],[pcx+140,dY(md*.30,md)],[pcx+200,dY(md*.62,md)],[pcx+340,dY(md*.18,md)]]
+      const circX = isBoat ? GL+DW*0.62 : GL+DW*0.45
+      return [
+        [entryX,     SY+24],          // 1 entry
+        [pcx,        pcy+28],         // 2 pinnacle top
+        [pcx+160,    dY(md*.32,md)],  // 3 circuit one side
+        [pcx+220,    dY(md*.64,md)],  // 4 deep side / pelagics
+        [circX,      dY(md*.22,md)],  // 5 return / ascent
+        [ssX,        ssY],            // 6 safety stop
+      ]
     }
     case 'drift':
-      return [[GL+240,SY+24],[GL+380,dY(md*.28,md)],[GL+560,dY(md*.50,md)],[GL+780,dY(md*.68,md)],[GL+980,dY(md*.18,md)]]
-    case 'muck':
-      return [[GL+220,SY+24],[GL+372,dY(md*.30,md)],[GL+562,dY(md*.52,md)],[GL+764,dY(md*.70,md)],[GL+944,dY(md*.20,md)]]
-    case 'jetty': {
-      const pilings=[GL+160,GL+310,GL+460,GL+610,GL+760]
-      return [[pilings[0],SY+24],[pilings[1],dY(md*.30,md)],[pilings[2],dY(md*.55,md)],[pilings[3],dY(md*.75,md)],[pilings[4]+100,dY(md*.18,md)]]
+      // Always left→right, no return — exit is where current took you
+      return [
+        [GL+220,       SY+24],          // 1 entry (upcurrent)
+        [GL+400,       dY(md*.28,md)],  // 2 drift 1
+        [GL+580,       dY(md*.50,md)],  // 3 drift 2
+        [GL+800,       dY(md*.68,md)],  // 4 deepest drift
+        [GL+DW-80,     dY(md*.22,md)],  // 5 peel off / ascent
+        [GL+DW-40,     ssY],            // 6 SMB / surface pickup
+      ]
+    case 'muck': {
+      // Grid search out and BACK — return to near entry
+      const farX = isBoat ? GL+820 : GL+780
+      return [
+        [entryX,    SY+24],           // 1 entry
+        [GL+380,    dY(md*.30,md)],   // 2 zone 1
+        [GL+580,    dY(md*.52,md)],   // 3 zone 2
+        [farX,      dY(md*.70,md)],   // 4 deepest / turn
+        [GL+340,    dY(md*.32,md)],   // 5 return route
+        [ssX,       ssY],             // 6 safety stop near shore
+      ]
     }
-    default:
-      return [[ex,SY+24],[GL+302,dY(md*.24,md)],[GL+504,dY(md*.52,md)],[GL+744,dY(md*.80,md)],[GL+944,dY(md*.18,md)]]
+    case 'jetty': {
+      // Along pilings and back
+      const p=[GL+160,GL+310,GL+460,GL+610,GL+760]
+      return [
+        [p[0],   SY+24],           // 1 entry under jetty
+        [p[1],   dY(md*.30,md)],   // 2 pilings
+        [p[2],   dY(md*.55,md)],   // 3 sand bottom
+        [p[3],   dY(md*.72,md)],   // 4 rubble zone
+        [p[1],   dY(md*.28,md)],   // 5 return toward entry
+        [ssX,    ssY],             // 6 safety stop
+      ]
+    }
+    default: {
+      // Reef slope: descend → explore → deep point → RETURN up slope → SS near shore
+      return [
+        [entryX,     SY+24],           // 1 entry
+        [GL+320,     dY(md*.24,md)],   // 2 shallow reef
+        [GL+540,     dY(md*.52,md)],   // 3 main reef
+        [GL+780,     dY(md*.80,md)],   // 4 deep point / turn
+        [GL+360,     dY(md*.28,md)],   // 5 return up slope
+        [ssX,        ssY],             // 6 safety stop
+      ]
+    }
   }
 }
 
@@ -555,23 +653,32 @@ function getRoutePoints(template:DiagramTemplate, md:number, isBoat:boolean, ee?
 function getMLPositions(template:DiagramTemplate, md:number):[number,number][] {
   switch(template) {
     case 'wreck':
-      return [[GL+920,dY(md*.15,md)],[GL+960,dY(md*.34,md)],[GL+900,dY(md*.54,md)],[GL+968,dY(md*.66,md)],[GL+924,dY(md*.44,md)]]
+      // ML tags on right of diagram — route now returns left so these don't overlap
+      return [[GL+900,dY(md*.14,md)],[GL+950,dY(md*.32,md)],[GL+890,dY(md*.52,md)],[GL+960,dY(md*.65,md)],[GL+910,dY(md*.42,md)]]
     case 'wall':
-      return [[GL+400,dY(md*.20,md)],[GL+450,dY(md*.38,md)],[GL+490,dY(md*.58,md)],[GL+428,dY(md*.74,md)],[GL+710,dY(md*.30,md)]]
+      // ML tags to right of wall route (route stays left side of diagram)
+      return [[GL+440,dY(md*.18,md)],[GL+490,dY(md*.36,md)],[GL+520,dY(md*.56,md)],[GL+460,dY(md*.72,md)],[GL+730,dY(md*.28,md)]]
     case 'cleaning-station':
-      return [[GL+300,dY(md*.16,md)],[GL+1060,dY(md*.30,md)],[GL+280,dY(md*.52,md)],[GL+1020,dY(md*.44,md)],[GL+310,dY(md*.38,md)]]
+      // ML tags above and below the plateau, away from the circuit route
+      return [[GL+220,dY(md*.14,md)],[GL+1080,dY(md*.28,md)],[GL+240,dY(md*.50,md)],[GL+1040,dY(md*.42,md)],[GL+260,dY(md*.36,md)]]
     case 'bay-dropoff':
-      return [[GL+200,dY(md*.14,md)],[GL+600,dY(md*.35,md)],[GL+680,dY(md*.56,md)],[GL+640,dY(md*.72,md)],[GL+210,dY(md*.30,md)]]
+      // ML tags on shallow plateau (left) and deeper right — away from return route at GL+320
+      return [[GL+180,dY(md*.12,md)],[GL+640,dY(md*.33,md)],[GL+700,dY(md*.54,md)],[GL+660,dY(md*.70,md)],[GL+180,dY(md*.28,md)]]
     case 'pinnacle':
-      return [[GL+DW*.43+250,dY(md*.10,md)],[GL+DW*.43+280,dY(md*.30,md)],[GL+DW*.43+260,dY(md*.52,md)],[GL+DW*.43+240,dY(md*.68,md)],[GL+DW*.43-340,dY(md*.22,md)]]
+      // ML tags in open water to the right of the pinnacle
+      return [[GL+DW*.43+260,dY(md*.08,md)],[GL+DW*.43+290,dY(md*.28,md)],[GL+DW*.43+270,dY(md*.50,md)],[GL+DW*.43+250,dY(md*.66,md)],[GL+DW*.43-360,dY(md*.20,md)]]
     case 'drift':
-      return [[GL+900,dY(md*.18,md)],[GL+860,dY(md*.38,md)],[GL+920,dY(md*.56,md)],[GL+880,dY(md*.70,md)],[GL+830,dY(md*.28,md)]]
+      // ML tags below the drift route
+      return [[GL+880,dY(md*.20,md)],[GL+840,dY(md*.40,md)],[GL+900,dY(md*.58,md)],[GL+860,dY(md*.72,md)],[GL+820,dY(md*.30,md)]]
     case 'muck':
-      return [[GL+560,dY(md*.26,md)-52],[GL+754,dY(md*.44,md)-52],[GL+900,dY(md*.60,md)-52],[GL+660,dY(md*.74,md)-52],[GL+440,dY(md*.50,md)-52]]
+      // ML tags above the muck route (route is lower on the slope)
+      return [[GL+540,dY(md*.24,md)-52],[GL+740,dY(md*.42,md)-52],[GL+880,dY(md*.58,md)-52],[GL+640,dY(md*.72,md)-52],[GL+420,dY(md*.48,md)-52]]
     case 'jetty':
-      return [[GL+860,dY(md*.20,md)],[GL+880,dY(md*.40,md)],[GL+840,dY(md*.58,md)],[GL+900,dY(md*.72,md)],[GL+820,dY(md*.30,md)]]
+      // ML tags in open water to right of jetty pilings
+      return [[GL+860,dY(md*.18,md)],[GL+880,dY(md*.38,md)],[GL+840,dY(md*.56,md)],[GL+900,dY(md*.70,md)],[GL+820,dY(md*.28,md)]]
     default:
-      return [[GL+982,dY(md*.17,md)],[GL+862,dY(md*.37,md)],[GL+1002,dY(md*.55,md)],[GL+882,dY(md*.70,md)],[GL+962,dY(md*.27,md)]]
+      // Reef slope: ML tags on right side — return route goes up the left/middle
+      return [[GL+980,dY(md*.15,md)],[GL+860,dY(md*.35,md)],[GL+1000,dY(md*.53,md)],[GL+880,dY(md*.68,md)],[GL+960,dY(md*.25,md)]]
   }
 }
 
@@ -665,17 +772,18 @@ function buildTimeline(template:DiagramTemplate, md:number, isBoat:boolean):TLSt
 }
 
 function buildWaypoints(template:DiagramTemplate, isBoat:boolean):string[] {
-  const e=isBoat?'Boat entry & descent':'Shore entry & descend'
+  const entry = isBoat ? 'Boat entry & descent' : 'Shore entry & descend'
+  const exit  = isBoat ? 'Safety stop · SMB pickup' : 'Safety stop · shore exit'
   switch(template) {
-    case 'wreck': return [e,'Wreck bow — explore','Mid-ship · engine room','Stern · max depth','Safety stop · exit']
-    case 'wall':  return [e,'Upper wall · corals','Mid-wall section','Max depth · turn','Safety stop · exit']
-    case 'cleaning-station': return [e,'Cleaning station 1','Main station · hover','Turn point · ascent','Safety stop · exit']
-    case 'bay-dropoff': return [e,'Shallow plateau','Drop-off edge','Max depth · turn','Safety stop · exit']
-    case 'pinnacle': return [e,'Pinnacle top','Circuit around','Deep side pelagics','Safety stop · exit']
-    case 'drift': return ['Entry upcurrent','Reef left · drift','Main reef section','Ascent point','Safety stop · SMB']
-    case 'muck': return ['Entry — slow descent','Sand zone · grid search','Rubble zone · critters','Return route','Safety stop · exit']
-    case 'jetty': return ['Entry under jetty','Search pilings','Sandy bottom','Debris / rubble zone','Safety stop · exit']
-    default: return [e,'Shallow reef · photos','Main reef · highlights','Deep point · turn','Safety stop · exit']
+    case 'wreck':   return [entry,'Wreck bow — explore','Mid-ship · engine room','Stern · max depth','Ascend sandy slope',exit]
+    case 'wall':    return [entry,'Upper wall · corals & fans','Mid-wall section','Max depth · turn point','Ascend wall',exit]
+    case 'cleaning-station': return [entry,'Cleaning station 1','Main station · hover','Station 3 · turn','Return across plateau',exit]
+    case 'bay-dropoff': return [entry,'Shallow plateau · explore','Drop-off edge','Max depth · turn','Return across plateau',exit]
+    case 'pinnacle': return [entry,'Pinnacle top · fish life','Circuit — one side','Deep side · pelagics','Ascent to blue water',exit]
+    case 'drift':   return ['Entry upcurrent','Drift zone 1','Drift zone 2','Deepest section','Peel off · ascent','SMB surface · boat collects']
+    case 'muck':    return [entry,'Sand zone 1 · search','Zone 2 · rubble & critters','Deepest point · turn','Return route · search again',exit]
+    case 'jetty':   return ['Enter under jetty','Pilings · search','Sandy bottom zone','Rubble zone · deepest','Return toward entry',exit]
+    default:        return [entry,'Shallow reef · photos','Main reef · highlights','Deep point · turn','Return up slope',exit]
   }
 }
 
