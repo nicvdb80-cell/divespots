@@ -1,7 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useAuth } from './AuthProvider'
-import AuthModal from './AuthModal'
+import { useState } from 'react'
 import Link from 'next/link'
 import DiveDiagram from './DiveDiagram'
 import { DiveSite } from '@/lib/data'
@@ -20,22 +18,6 @@ type TabId = 'diagram'|'details'|'marine'|'safety'|'tips'|'reviews'|'photos'
 
 export default function DiveSiteTabs({ site }: { site: DiveSite }) {
   const [activeTab, setActiveTab] = useState<TabId>('diagram')
-  const { user } = useAuth()
-  const [blocked, setBlocked] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-
-  useEffect(() => {
-    if (user) { setBlocked(false); return }
-    const FREE_LIMIT = 3
-    const STORAGE_KEY = 'ds_viewed_sites'
-    try {
-      const viewed: string[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-      if (viewed.includes(site.slug)) return // already visited
-      if (viewed.length >= FREE_LIMIT) { setBlocked(true); setShowAuthModal(true); return }
-      viewed.push(site.slug)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(viewed))
-    } catch {}
-  }, [user, site.slug])
   const reviews = REVIEWS[site.slug] || []
 
   const tabs: {id:TabId;label:string}[] = [
@@ -47,30 +29,6 @@ export default function DiveSiteTabs({ site }: { site: DiveSite }) {
     {id:'reviews',label:'Reviews'},
     {id:'photos',label:'Photos'},
   ]
-
-  if (blocked && !user) return (
-    <div style={{ padding: '3rem 0', textAlign: 'center' }}>
-      <div style={{ width: 56, height: 56, background: '#0a1628', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: 24 }}>🤿</div>
-      <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0a1628', marginBottom: 8 }}>You have explored 3 dive sites</h2>
-      <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: '1.5rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>
-        Create a free Dive Spots account to unlock all 1,200+ dive sites, save favourites, and join the diver community.
-      </p>
-      <button onClick={() => setShowAuthModal(true)} style={{ padding: '12px 32px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12, display: 'block', margin: '0 auto 12px' }}>
-        Create free account
-      </button>
-      <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 12 }}>
-        Already a member? <button onClick={() => setShowAuthModal(true)} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Sign in</button>
-      </div>
-      <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-        {['1,200+ dive sites', 'Save favourites', 'Free forever'].map(f => (
-          <div key={f} style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: '#16a34a' }}>✓</span> {f}
-          </div>
-        ))}
-      </div>
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => { setShowAuthModal(false); setBlocked(false) }} />}
-    </div>
-  )
 
   return (
     <>
