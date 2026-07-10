@@ -202,37 +202,58 @@ function SmallWreckRoute({ md, shore }: { md: number; shore?: boolean }) {
   const hullY  = dY(md - 5, md)
   const hullX  = 240
   const hullW  = 180
-  const startX = shore ? 108 : 200
-  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
   const y5     = dY(5, md)
 
+  if (shore) {
+    // ① beach → ② descend to wreck bow → ③ along deck to stern → ④ sandy bottom →
+    // ⑤ ascend back toward shore, safety stop near beach → exit
+    return (
+      <g>
+        {/* ① entry at waterline */}
+        <WaypointCircle x={118} y={SURFACE_Y + 10} n={1}/>
+        {/* swim out and descend to wreck */}
+        <path d={`M118 ${SURFACE_Y+10} Q180 ${dY(md*0.3,md)} 230 ${hullY+4}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ② bow */}
+        <WaypointCircle x={hullX} y={hullY+4} n={2}/>
+        {/* along deck */}
+        <path d={`M${hullX} ${hullY+4} L${hullX+hullW} ${hullY+6}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ③ stern */}
+        <WaypointCircle x={hullX+hullW} y={hullY+6} n={3}/>
+        {/* drop to sandy bottom */}
+        <path d={`M${hullX+hullW} ${hullY+6} Q${hullX+hullW+30} ${sandY-6} ${hullX+hullW+50} ${sandY}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ④ sandy bottom */}
+        <WaypointCircle x={hullX+hullW+50} y={sandY-4} n={4}/>
+        {/* ascend back toward shore */}
+        <path d={`M${hullX+hullW+50} ${sandY} Q${hullX+60} ${dY(md*0.4,md)} 200 ${y5}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ⑤ safety stop near shore */}
+        <WaypointCircle x={200} y={y5} n={5}/>
+        <SafetyStop x={212} y={y5-36}/>
+        {/* exit to beach */}
+        <path d={`M200 ${y5} Q155 ${SURFACE_Y+8} 118 ${SURFACE_Y+10}`}
+          stroke="#fff" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.5"/>
+        <text x="150" y={SURFACE_Y-4} fontSize="7.5" fill="#22c55e" fontWeight="700">EXIT</text>
+      </g>
+    )
+  }
+
+  // boat small wreck
   return (
     <g>
-      {/* 1 — entry */}
-      <path d={`M${startX} ${startY} Q${startX+20} ${y5+8} ${startX+40} ${hullY-30}`}
-        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
-
-      {/* 2 — descend to wreck top */}
-      <path d={`M${startX+40} ${hullY-30} Q${hullX+20} ${hullY-12} ${hullX+30} ${hullY+4}`}
-        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={hullX+10} y={hullY-6} n={2}/>
-
-      {/* 3 — along wreck bow to stern */}
-      <path d={`M${hullX+30} ${hullY+4} L${hullX+hullW-10} ${hullY+6}`}
-        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={hullX+hullW/2} y={hullY+4} n={3}/>
-
-      {/* 4 — down to sandy bottom / under hull */}
-      <path d={`M${hullX+hullW-10} ${hullY+6} Q${hullX+hullW+20} ${sandY-10} ${hullX+hullW+40} ${sandY}`}
-        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={hullX+hullW+20} y={sandY-4} n={4}/>
-
-      {/* 5 — ascend away from wreck, safety stop */}
-      <path d={`M${hullX+hullW+40} ${sandY} Q${hullX+hullW+80} ${dY(md*0.4,md)} ${hullX+hullW+100} ${y5}`}
-        stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={hullX+hullW+100} y={y5} n={5}/>
-      <SafetyStop x={hullX+hullW+112} y={y5-36}/>
+      <path d={`M350 ${SURFACE_Y} Q340 ${y5} 330 ${hullY-20}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={350} y={SURFACE_Y+8} n={1}/>
+      <path d={`M330 ${hullY-20} Q300 ${hullY-6} ${hullX+hullW/2} ${hullY+4}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW/2} y={hullY+4} n={2}/>
+      <path d={`M${hullX+hullW/2} ${hullY+4} L${hullX+hullW} ${hullY+6}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW} y={hullY+6} n={3}/>
+      <path d={`M${hullX+hullW} ${hullY+6} Q${hullX+hullW+30} ${sandY-6} ${hullX+hullW+50} ${sandY}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW+50} y={sandY-4} n={4}/>
+      <path d={`M${hullX+hullW+50} ${sandY} Q${hullX+hullW+100} ${dY(md*0.3,md)} ${hullX+hullW+120} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={hullX+hullW+120} y={y5} n={5}/>
+      <SafetyStop x={hullX+hullW+132} y={y5-36}/>
     </g>
   )
 }
@@ -331,80 +352,165 @@ function BoatReefTerrain({ md }: { md: number }) {
 }
 
 // ─── dive routes ────────────────────────────────────────────────────────────
+
+// Shore U-shape: entry beach left → swim out & descend → deep point right → return toward shore at 5m → safety stop near shore → exit beach
+// Boat out-and-back: drop right-of-centre → descend → deep → ascend → safety stop → SMB pickup
+
 function WreckRoute({ md, shore }: { md: number; shore?: boolean }) {
-  const y5=dY(5,md), yMax=dY(md-4,md)
-  const startX = shore ? 108 : 160
-  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
+  const y5 = dY(5, md), yMax = dY(md - 4, md)
+
+  if (shore) {
+    // ① beach entry → ② descend to wreck bow (mid-distance) → ③ along wreck to stern (far) →
+    // ④ turn & begin ascent → ⑤ safety stop back near shore
+    return (
+      <g>
+        {/* ① entry at waterline */}
+        <WaypointCircle x={118} y={SURFACE_Y + 10} n={1}/>
+        {/* descend */}
+        <path d={`M118 ${SURFACE_Y+10} Q160 ${y5+10} 200 ${dY(md*0.25,md)} Q240 ${dY(md*0.5,md)} 280 ${y5+12}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ② wreck bow */}
+        <WaypointCircle x={280} y={y5+12} n={2}/>
+        {/* along wreck deck to stern */}
+        <path d={`M280 ${y5+12} Q390 ${y5+6} 480 ${yMax}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ③ deepest point / stern */}
+        <WaypointCircle x={480} y={yMax} n={3}/>
+        {/* turn — ascend back toward shore */}
+        <path d={`M480 ${yMax} Q420 ${dY(md*0.5,md)} 320 ${dY(md*0.3,md)} Q240 ${y5+6} 180 ${y5}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ④ ascending, mid-way back */}
+        <WaypointCircle x={310} y={dY(md*0.28,md)} n={4}/>
+        {/* ⑤ safety stop close to shore */}
+        <WaypointCircle x={180} y={y5} n={5}/>
+        <SafetyStop x={192} y={y5-36}/>
+        {/* exit arrow back to beach */}
+        <path d={`M180 ${y5} Q148 ${SURFACE_Y+8} 118 ${SURFACE_Y+10}`}
+          stroke="#fff" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.5"/>
+        <text x="140" y={SURFACE_Y-4} fontSize="7.5" fill="#22c55e" fontWeight="700">EXIT</text>
+      </g>
+    )
+  }
+
+  // boat wreck
   return (
     <g>
-      <path d={`M${startX} ${startY} Q${startX+20} ${y5-6} ${startX+40} ${y5+14}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
-      <path d={`M${startX+40} ${y5+14} Q${startX+150} ${y5-2} ${startX+270} ${y5+12}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+150} y={y5+10} n={2}/>
-      <path d={`M${startX+270} ${y5+12} Q${startX+330} ${dY(md*0.58,md)} ${startX+380} ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+315} y={dY(md*0.56,md)} n={3}/>
-      <WaypointCircle x={startX+380} y={yMax} n={4}/>
-      <path d={`M${startX+380} ${yMax} Q${startX+420} ${dY(10,md)} ${startX+440} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+440} y={y5} n={5}/>
-      <SafetyStop x={startX+452} y={y5-36}/>
+      <path d={`M300 ${SURFACE_Y} Q290 ${y5-4} 280 ${y5+14}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={300} y={SURFACE_Y+8} n={1}/>
+      <path d={`M280 ${y5+14} Q360 ${y5-2} 440 ${y5+12}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={360} y={y5+8} n={2}/>
+      <path d={`M440 ${y5+12} Q490 ${dY(md*0.58,md)} 520 ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={480} y={dY(md*0.56,md)} n={3}/>
+      <WaypointCircle x={520} y={yMax} n={4}/>
+      <path d={`M520 ${yMax} Q540 ${dY(10,md)} 550 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={550} y={y5} n={5}/>
+      <SafetyStop x={562} y={y5-36}/>
     </g>
   )
 }
 
 function WallRoute({ md, shore }: { md: number; shore?: boolean }) {
-  const y5=dY(5,md), yMax=dY(md-4,md)
-  // wall dives: descend near the wall top, go deep, come back shallower
-  const startX = shore ? 108 : 280
-  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
+  const y5 = dY(5, md), yMax = dY(md - 4, md)
+
+  if (shore) {
+    // ① beach → ② top of wall shallow → ③ deepest point along wall →
+    // ④ start return ascent along wall → ⑤ safety stop back near shore → exit
+    return (
+      <g>
+        {/* ① entry */}
+        <WaypointCircle x={118} y={SURFACE_Y + 10} n={1}/>
+        {/* swim out and descend to wall top */}
+        <path d={`M118 ${SURFACE_Y+10} Q150 ${y5+4} 165 ${dY(md*0.2,md)}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ② top of wall */}
+        <WaypointCircle x={165} y={dY(md*0.18,md)} n={2}/>
+        {/* descend along wall face */}
+        <path d={`M165 ${dY(md*0.18,md)} Q172 ${dY(md*0.5,md)} 178 ${yMax-14}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ③ deepest point */}
+        <WaypointCircle x={178} y={yMax-14} n={3}/>
+        {/* swim along wall at depth then begin ascending toward shore */}
+        <path d={`M178 ${yMax-14} Q260 ${dY(md*0.55,md)} 300 ${dY(md*0.35,md)} Q280 ${y5+8} 210 ${y5}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ④ mid-ascent */}
+        <WaypointCircle x={280} y={dY(md*0.32,md)} n={4}/>
+        {/* ⑤ safety stop near shore */}
+        <WaypointCircle x={210} y={y5} n={5}/>
+        <SafetyStop x={222} y={y5-36}/>
+        {/* exit back to beach */}
+        <path d={`M210 ${y5} Q160 ${SURFACE_Y+8} 118 ${SURFACE_Y+10}`}
+          stroke="#fff" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.5"/>
+        <text x="155" y={SURFACE_Y-4} fontSize="7.5" fill="#22c55e" fontWeight="700">EXIT</text>
+      </g>
+    )
+  }
+
+  // boat wall
   return (
     <g>
-      {shore ? (
-        // shore wall: walk in, descend along wall face
-        <>
-          <path d={`M${startX} ${startY} Q118 ${y5+4} 125 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={startX+4} y={startY+12} n={1}/>
-          <path d={`M125 ${dY(16,md)} Q130 ${dY(md*0.45,md)} 138 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={130} y={dY(md*0.38,md)} n={2}/>
-          <WaypointCircle x={140} y={yMax-18} n={3}/>
-          <path d={`M140 ${yMax-18} Q220 ${dY(md*0.38,md)} 390 ${dY(18,md)} Q460 ${y5+14} 520 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={380} y={dY(18,md)} n={4}/>
-          <WaypointCircle x={520} y={y5} n={5}/>
-          <SafetyStop x={538} y={y5-36}/>
-        </>
-      ) : (
-        // boat wall: descend from water, go deep along wall
-        <>
-          <path d={`M280 ${SURFACE_Y} Q250 ${y5} 220 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={280} y={SURFACE_Y+10} n={1}/>
-          <path d={`M220 ${dY(16,md)} Q195 ${dY(md*0.45,md)} 180 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={208} y={dY(md*0.38,md)} n={2}/>
-          <WaypointCircle x={182} y={yMax-18} n={3}/>
-          <path d={`M182 ${yMax-18} Q240 ${dY(md*0.38,md)} 390 ${dY(18,md)} Q460 ${y5+14} 520 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-          <WaypointCircle x={380} y={dY(18,md)} n={4}/>
-          <WaypointCircle x={520} y={y5} n={5}/>
-          <SafetyStop x={538} y={y5-36}/>
-        </>
-      )}
+      <path d={`M380 ${SURFACE_Y} Q350 ${y5} 310 ${dY(16,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={380} y={SURFACE_Y+10} n={1}/>
+      <path d={`M310 ${dY(16,md)} Q280 ${dY(md*0.45,md)} 265 ${yMax-18}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={295} y={dY(md*0.38,md)} n={2}/>
+      <WaypointCircle x={265} y={yMax-18} n={3}/>
+      <path d={`M265 ${yMax-18} Q340 ${dY(md*0.38,md)} 490 ${dY(18,md)} Q550 ${y5+10} 570 ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={470} y={dY(18,md)} n={4}/>
+      <WaypointCircle x={570} y={y5} n={5}/>
+      <SafetyStop x={582} y={y5-36}/>
     </g>
   )
 }
 
 function ReefRoute({ md, shore }: { md: number; shore?: boolean }) {
-  const y5=dY(5,md), yMax=dY(md*0.82,md)
-  const startX = shore ? 108 : 160
-  const startY = shore ? SURFACE_Y + 4 : SURFACE_Y
+  const y5 = dY(5, md), yMax = dY(md * 0.82, md)
+
+  if (shore) {
+    // ① beach → swim out descending → ② mid reef → ③ deepest point (far out) →
+    // ④ turn & head back toward shore ascending → ⑤ safety stop near shore → exit
+    return (
+      <g>
+        {/* ① entry */}
+        <WaypointCircle x={118} y={SURFACE_Y + 10} n={1}/>
+        {/* swim out, descend along slope */}
+        <path d={`M118 ${SURFACE_Y+10} Q180 ${dY(md*0.18,md)} 240 ${dY(md*0.38,md)}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ② mid reef */}
+        <WaypointCircle x={240} y={dY(md*0.36,md)} n={2}/>
+        {/* continue out to deepest */}
+        <path d={`M240 ${dY(md*0.38,md)} Q340 ${dY(md*0.6,md)} 430 ${yMax}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ③ deepest / turn point */}
+        <WaypointCircle x={430} y={yMax} n={3}/>
+        {/* return toward shore, ascending */}
+        <path d={`M430 ${yMax} Q370 ${dY(md*0.5,md)} 290 ${dY(md*0.28,md)} Q230 ${y5+10} 190 ${y5}`}
+          stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+        {/* ④ ascending, heading home */}
+        <WaypointCircle x={290} y={dY(md*0.26,md)} n={4}/>
+        {/* ⑤ safety stop near shore */}
+        <WaypointCircle x={190} y={y5} n={5}/>
+        <SafetyStop x={202} y={y5-36}/>
+        {/* exit arrow to beach */}
+        <path d={`M190 ${y5} Q150 ${SURFACE_Y+8} 118 ${SURFACE_Y+10}`}
+          stroke="#fff" strokeWidth="1.5" strokeDasharray="4,4" fill="none" opacity="0.5"/>
+        <text x="148" y={SURFACE_Y-4} fontSize="7.5" fill="#22c55e" fontWeight="700">EXIT</text>
+      </g>
+    )
+  }
+
+  // boat reef
+  const startX = 240
   return (
     <g>
-      <path d={`M${startX} ${startY} Q${startX+30} ${y5+8} ${startX+55} ${dY(md*0.28,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+4} y={startY+12} n={1}/>
-      <path d={`M${startX+55} ${dY(md*0.28,md)} Q${startX+150} ${dY(md*0.46,md)} ${startX+210} ${dY(md*0.54,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+140} y={dY(md*0.44,md)} n={2}/>
-      <path d={`M${startX+210} ${dY(md*0.54,md)} Q${startX+270} ${dY(md*0.7,md)} ${startX+320} ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+250} y={dY(md*0.66,md)} n={3}/>
-      <WaypointCircle x={startX+320} y={yMax} n={4}/>
-      <path d={`M${startX+320} ${yMax} Q${startX+370} ${dY(md*0.28,md)} ${startX+400} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
-      <WaypointCircle x={startX+400} y={y5} n={5}/>
-      <SafetyStop x={startX+412} y={y5-36}/>
+      <path d={`M${startX} ${SURFACE_Y} Q${startX+20} ${y5+8} ${startX+40} ${dY(md*0.28,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+4} y={SURFACE_Y+10} n={1}/>
+      <path d={`M${startX+40} ${dY(md*0.28,md)} Q${startX+120} ${dY(md*0.46,md)} ${startX+180} ${dY(md*0.54,md)}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+110} y={dY(md*0.44,md)} n={2}/>
+      <path d={`M${startX+180} ${dY(md*0.54,md)} Q${startX+240} ${dY(md*0.7,md)} ${startX+290} ${yMax}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+220} y={dY(md*0.66,md)} n={3}/>
+      <WaypointCircle x={startX+290} y={yMax} n={4}/>
+      <path d={`M${startX+290} ${yMax} Q${startX+330} ${dY(md*0.28,md)} ${startX+360} ${y5}`} stroke="#fff" strokeWidth="2.2" strokeDasharray="7,4" fill="none"/>
+      <WaypointCircle x={startX+360} y={y5} n={5}/>
+      <SafetyStop x={startX+372} y={y5-36}/>
     </g>
   )
 }
@@ -672,10 +778,10 @@ export default function DiveDiagram({ site }: { site: DiveSite }) {
       <rect x={PANEL_RIGHT+8} y={WPT_Y} width={W-PANEL_RIGHT-16} height="116" rx="6" fill="#0d2035" stroke="#1e3a5f" strokeWidth="1"/>
       <text x={PANEL_RIGHT+14} y={WPT_Y+16} fontSize="9" fill="#94a3b8" fontWeight="800" letterSpacing="1">ROUTE WAYPOINTS</text>
       {([
-        [1,'Entry / Descent'],
-        [2,'Main reef / attraction'],
-        [3,'Deepest point'],
-        [4,'Turn & ascent'],
+        [1, isBoat ? 'Entry / Descent'   : 'Shore entry & descend'],
+        [2, isBoat ? 'Main reef/feature'  : 'Main reef / feature'],
+        [3,'Deepest point / turn'],
+        [4, isBoat ? 'Turn & ascent'      : 'Return toward shore'],
         [5,'Safety stop & exit'],
       ] as [number,string][]).map(([n,lbl],i) => (
         <g key={n} transform={`translate(${PANEL_RIGHT+14},${WPT_Y+30+i*18})`}>
