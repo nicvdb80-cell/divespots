@@ -26,7 +26,7 @@ export default function DiveSiteTabs({ site }: { site: DiveSite }) {
 
   useEffect(() => {
     if (user) { setBlocked(false); return }
-    const FREE_LIMIT = 3
+    const FREE_LIMIT = 9999
     const STORAGE_KEY = 'ds_viewed_sites'
     try {
       const viewed: string[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
