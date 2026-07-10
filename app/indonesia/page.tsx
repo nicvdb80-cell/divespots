@@ -18,7 +18,7 @@ export default function IndonesiaPage() {
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
           {[
             {slug:'bali',name:'Bali',desc:'Wrecks, walls, mantas, and muck diving',sites:'120+',live:true},
-            {slug:'raja-ampat',name:'Raja Ampat',desc:'The most biodiverse reef system on earth',sites:'200+',live:false},
+            {slug:'raja-ampat',name:'Raja Ampat',desc:'The most biodiverse reef system on earth',sites:'200+',live:true},
             {slug:'komodo',name:'Komodo',desc:'Dramatic drift dives and manta aggregations',sites:'50+',live:false},
           ].map(r=>(
             <div key={r.slug} style={{background:r.live?'linear-gradient(135deg,#0a1628,#1e3a5f)':'#f8fafc',borderRadius:14,padding:'1.5rem',border:r.live?'none':'1px solid #e2e8f0',position:'relative'}}>

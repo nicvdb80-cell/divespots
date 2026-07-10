@@ -2,7 +2,7 @@ import Navbar from '@/components/Navbar'
 import Link from 'next/link'
 export const metadata = { title: 'Dive Destinations | Dive Spots', description: 'Explore dive destinations worldwide — Indonesia, Philippines, Thailand, Maldives, Australia, Egypt and more.' }
 const countries = [
-  {slug:'indonesia',name:'Indonesia',sub:'Bali · Raja Ampat · Komodo',desc:'Home to the Coral Triangle and the most diverse marine life on earth.',count:'600+',live:true},
+  {slug:'indonesia',name:'Indonesia',sub:'Bali · Raja Ampat · Komodo',desc:'Home to the Coral Triangle and the most diverse marine life on earth. 2 regions live: Bali & Raja Ampat.',count:'600+',live:true},
   {slug:'philippines',name:'Philippines',sub:'Tubbataha · Coron · Apo Island',desc:'World-class wrecks, walls, and whale sharks across 7,600 islands.',count:'500+',live:false},
   {slug:'thailand',name:'Thailand',sub:'Similan Islands · Koh Tao · Richelieu Rock',desc:'Whale sharks, manta rays, and pristine reefs in the Andaman Sea.',count:'200+',live:false},
   {slug:'maldives',name:'Maldives',sub:'North Malé · Baa Atoll · Ari Atoll',desc:'Mantas, whale sharks, and drift diving across pristine atolls.',count:'300+',live:false},
