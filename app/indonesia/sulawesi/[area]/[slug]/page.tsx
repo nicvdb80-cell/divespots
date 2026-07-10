@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ area: str
 export default async function SulawesiDiveSitePage({ params }: { params: Promise<{ area: string; slug: string }> }) {
   const { slug } = await params
   const site = getSulawesiSiteBySlug(slug)
-  if (!site) notFound()
+  if (!site) { notFound(); return null }
   const nearby = SULAWESI_SITES.filter(s => s.areaSlug === site.areaSlug && s.slug !== site.slug).slice(0, 3)
 
   return (
@@ -99,7 +99,7 @@ export default async function SulawesiDiveSitePage({ params }: { params: Promise
 
           {/* Tabs */}
           <div style={{ padding: '1.5rem 2rem' }}>
-            <DiveSiteTabs site={site} />
+            <DiveSiteTabs site={site!} />
 
             {/* Nearby sites */}
             {nearby.length > 0 && (

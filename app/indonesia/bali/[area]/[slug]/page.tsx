@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ area: str
 export default async function DiveSitePage({ params }: { params: Promise<{ area: string; slug: string }> }) {
   const { slug } = await params
   const site = getSiteBySlug(slug)
-  if (!site) notFound()
+  if (!site) { notFound(); return null }
   const nearby = BALI_SITES.filter(s => s.areaSlug === site.areaSlug && s.slug !== site.slug).slice(0, 3)
 
   return (
@@ -92,7 +92,7 @@ export default async function DiveSitePage({ params }: { params: Promise<{ area:
                   </div>
                 ))}
               </div>
-              <DiveSiteTabs site={site} />
+              <DiveSiteTabs site={site!} />
             </div>
             <div>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "1.25rem", marginBottom: 12 }}>

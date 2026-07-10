@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function AmedDiveSitePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const site = getAmedSiteBySlug(slug)
-  if (!site) notFound()
+  if (!site) { notFound(); return null }
   const nearby = AMED_SITES.filter(s => s.slug !== site.slug).slice(0, 4)
 
   return (
@@ -78,7 +78,7 @@ export default async function AmedDiveSitePage({ params }: { params: Promise<{ s
             </div>
           </div>
           <div style={{ padding: '1.5rem 2rem' }}>
-            <DiveSiteTabs site={site} />
+            <DiveSiteTabs site={site!} />
             {nearby.length > 0 && (
               <div style={{ marginTop: '2rem' }}>
                 <h3 style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 10, letterSpacing: 2 }}>MORE AMED DIVE SITES</h3>

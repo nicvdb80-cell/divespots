@@ -45,8 +45,8 @@ const C = {
 }
 
 // ── PRIMITIVES ─────────────────────────────────────────────────────────────
-function Tx({ x,y,sz,fill=C.tex,w='400',a='start',ls='0',children }:{
-  x:number;y:number;sz:number;fill?:string;w?:string;a?:string;ls?:string;children:React.ReactNode
+function Tx({ x,y,sz,fill=C.tex,w='400',a='start',ls='0',children }:{key?:React.Key;
+  x:number;y:number;sz:number;fill?:string;w?:string;a?:'start'|'middle'|'end';ls?:string;children:React.ReactNode
 }) {
   return <text x={x} y={y} fontSize={sz} fill={fill} fontWeight={w} textAnchor={a}
     letterSpacing={ls} fontFamily="'Inter','Helvetica Neue',system-ui,Arial,sans-serif">{children}</text>
@@ -157,7 +157,7 @@ function CurrentViz({ x, y, strength }:{x:number;y:number;strength:'weak'|'moder
   )
 }
 
-function Wp({ x, y, n, ss=false }:{x:number;y:number;n:number;ss?:boolean}) {
+function Wp({ x, y, n, ss=false }:{x:number;y:number;n:number;ss?:boolean;[k:string]:unknown}) {
   return (
     <g>
       <circle cx={x} cy={y} r={25} fill="rgba(0,0,0,0.28)"/>
@@ -180,7 +180,7 @@ function SSBadge({ x, y }:{x:number;y:number}) {
   )
 }
 
-function HazardTag({ x, y, text }:{x:number;y:number;text:string}) {
+function HazardTag({ x, y, text }:{x:number;y:number;text:string;[k:string]:unknown}) {
   const t=text.length>28?text.slice(0,27)+'…':text
   const w=t.length*10.2+54
   return (
@@ -193,7 +193,7 @@ function HazardTag({ x, y, text }:{x:number;y:number;text:string}) {
   )
 }
 
-function MLTag({ x, y, name, depth }:{x:number;y:number;name:string;depth:string}) {
+function MLTag({ x, y, name, depth }:{x:number;y:number;name:string;depth:string;[k:string]:unknown}) {
   const label=name.length>22?name.slice(0,21)+'…':name
   const w=Math.max(label.length*10.4+24,180)
   return (
@@ -311,7 +311,7 @@ function TplCleaningStation({ md }:{md:number}) {
       <path d={`M${plateauX-40} ${plateauY+36} Q${plateauX+100} ${dY(md*0.6,md)} ${plateauX+260} ${dY(md*0.72,md)} Q${plateauX+440} ${dY(md*0.82,md)} ${plateauX+plateauW+40} ${dY(md*0.76,md)} L${plateauX+plateauW+40} ${BY+50} L${plateauX-40} ${BY+50} Z`}
         fill={C.trF} stroke={C.trS} strokeWidth="1.5" opacity="0.7"/>
       {/* sand patches */}
-      <ellipse cx={plateauX+280} cy={BY-18} rx={220} ry={22} fill={C.sand} opacity="0.22"/>
+      <ellipse cx={plateauX+280} cy={BY-18} rx={220} ry={22} fill={C.sand} opacity={0.22}/>
       {/* down-current indicator */}
       {[plateauX+160, plateauX+320, plateauX+480].map((cx,i)=>(
         <g key={i}>
@@ -352,7 +352,7 @@ function TplBayDropoff({ md }:{md:number}) {
         </g>
       })}
       {/* deeper sand */}
-      <ellipse cx={dropX+300} cy={BY-16} rx={160} ry={18} fill={C.sand} opacity="0.2"/>
+      <ellipse cx={dropX+300} cy={BY-16} rx={160} ry={18} fill={C.sand} opacity={0.2}/>
     </g>
   )
 }
@@ -362,7 +362,7 @@ function TplPinnacle({ md }:{md:number}) {
   const pcx=GL+DW*0.43, pcy=dY(md*0.07,md)
   return (
     <g>
-      <Sand opacity="0.18"/>
+      <Sand opacity={0.18}/>
       {/* primary pinnacle */}
       <path d={`M${pcx-220} ${BY} Q${pcx-118} ${pcy+140} ${pcx-28} ${pcy+30} Q${pcx} ${pcy} ${pcx+28} ${pcy+30} Q${pcx+118} ${pcy+140} ${pcx+220} ${BY} Z`}
         fill={C.trF} stroke={C.trS} strokeWidth="2.5"/>
@@ -402,7 +402,7 @@ function TplDrift({ md }:{md:number}) {
             strokeLinecap="round" strokeLinejoin="round" opacity={0.28+ri*.08}/>
         ))
       ))}
-      <Sand opacity="0.18"/>
+      <Sand opacity={0.18}/>
     </g>
   )
 }
@@ -448,7 +448,7 @@ function TplJetty({ md }:{md:number}) {
   return (
     <g>
       {/* flat sandy bottom */}
-      <path d={`M0 ${BY} L${PX} ${BY} L${PX} ${BY+50} L0 ${BY+50} Z`} fill={C.sand} opacity="0.22"/>
+      <path d={`M0 ${BY} L${PX} ${BY} L${PX} ${BY+50} L0 ${BY+50} Z`} fill={C.sand} opacity={0.22}/>
       {/* jetty deck at surface */}
       <rect x={GL+100} y={SY-22} width={750} height={20} rx="3" fill={C.tex3} stroke={C.div} strokeWidth="1.5"/>
       <rect x={GL+98} y={SY-30} width={754} height={10} rx="3" fill={C.tex2} opacity="0.6"/>
@@ -835,6 +835,7 @@ function buildTips(template:DiagramTemplate, site:DiveSite):Tip[] {
     'drift':            {icon:'💨',label:'DRIFT TIPS',    text:'Enter upcurrent. Maintain depth. SMB ready for pick-up.'},
     'muck':             {icon:'🔍',label:'CRITTER TIP',   text:'Move at a crawl. Your divemaster spots first. Never touch the substrate.'},
     'jetty':            {icon:'🌙',label:'NIGHT DIVING',  text:'Jetty dives are spectacular at night. Torch and backup light essential.'},
+    'reef-slope':         {icon:'🐠',label:'REEF LIFE',      text:'Take time to look under ledges and in crevices for hidden reef species.'},
   }[template] ?? {icon:'🌅',label:'BEST TIMING',text:`Morning for best visibility and active ${ml0}.`}
   return [
     t1,
