@@ -138,6 +138,9 @@ export function getTemplate(site: DiveSite): DiagramTemplate {
 
   // Explicit structure type — highest priority
   if (site.diagramType === 'wreck' || type === 'Wreck') return 'wreck'
+  // Bay sites that also have walls — bay-dropoff takes priority over wall for diagram
+  const bayPrioritySlugs = ['jemeluk-bay','jemeluk-bay-wall','jemeluk-bay-amed']
+  if (bayPrioritySlugs.includes(slug)) return 'bay-dropoff'
   if (site.diagramType === 'wall'  || type === 'Wall')  return 'wall'
   if (type === 'Drift') return 'drift'
 
@@ -147,8 +150,9 @@ export function getTemplate(site: DiveSite): DiagramTemplate {
 
   if (type === 'Muck')  return 'muck'
 
-  // Cleaning station — only true manta aggregation sites, not bays
-  if ((n.includes('manta') || slug.includes('manta')) && !n.includes('bay'))
+  // Cleaning station — manta aggregation sites (manta-bay is also a cleaning station)
+  const mantaSlugs = ['manta-point','manta-bay','manta-ridge','manta-bay-amed']
+  if (mantaSlugs.includes(slug) || (n.includes('manta') && !slug.includes('bay') && !slug.includes('jemeluk')))
     return 'cleaning-station'
 
   // Drift — goodFor or specific sites
