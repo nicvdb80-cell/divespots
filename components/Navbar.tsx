@@ -4,12 +4,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthProvider'
 import AuthModal from './AuthModal'
-import { BALI_SITES, RAJA_AMPAT_SITES, SULAWESI_SITES } from '@/lib/data'
+import { BALI_SITES, RAJA_AMPAT_SITES, SULAWESI_SITES, AMED_SITES, TULAMBEN_EXTRA_SITES } from '@/lib/data'
 
 const ALL_SITES = [
   ...BALI_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Bali' })),
   ...RAJA_AMPAT_SITES.map(s => ({ ...s, region: 'raja-ampat', regionLabel: 'Raja Ampat' })),
   ...SULAWESI_SITES.map(s => ({ ...s, region: 'sulawesi', regionLabel: 'Sulawesi' })),
+  ...AMED_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Amed, Bali' })),
+  ...TULAMBEN_EXTRA_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Tulamben, Bali' })),
 ]
 
 export default function Navbar() {
@@ -43,7 +45,7 @@ export default function Navbar() {
   function handleSelect(site: typeof ALL_SITES[0]) {
     setSearchQuery('')
     setSearchOpen(false)
-    router.push(`/indonesia/${site.region}/${site.areaSlug}/${site.slug}`)
+    router.push(site.areaSlug === 'amed' ? `/indonesia/bali/amed/${site.slug}` : `/indonesia/${site.region}/${site.areaSlug}/${site.slug}`)
   }
 
   const links = [
