@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './AuthProvider'
 import AuthModal from './AuthModal'
-import { BALI_SITES, RAJA_AMPAT_SITES, SULAWESI_SITES, AMED_SITES, TULAMBEN_EXTRA_SITES } from '@/lib/data'
+import { BALI_SITES, RAJA_AMPAT_SITES, SULAWESI_SITES, AMED_SITES, TULAMBEN_EXTRA_SITES, BORNEO_SITES } from '@/lib/data'
 
 const ALL_SITES = [
   ...BALI_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Bali' })),
@@ -12,6 +12,7 @@ const ALL_SITES = [
   ...SULAWESI_SITES.map(s => ({ ...s, region: 'sulawesi', regionLabel: 'Sulawesi' })),
   ...AMED_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Amed, Bali' })),
   ...TULAMBEN_EXTRA_SITES.map(s => ({ ...s, region: 'bali', regionLabel: 'Tulamben, Bali' })),
+  ...BORNEO_SITES.map(s => ({ ...s, region: 'borneo', regionLabel: 'Borneo' })),
 ]
 
 export default function Navbar() {
